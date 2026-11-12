@@ -5,6 +5,7 @@ import {
   ShadowMaterial, SRGBColorSpace, Vector3, WebGLRenderer,
 } from 'three';
 import { BUILD_DURATION, createMotionPlan, remaining, turnAngle } from './animation.ts';
+import { BOUNCE_HEIGHT, LANDING_GLSL, PROTOTYPE_DURATION, landingOffset, prototypeAngle, type LandingMotion } from './landing-prototype.ts';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { disposeGeometries, geometryKey, partGeometry } from './geometry.ts';
 import type { BrickRecord, MaterialRole, TempleDefinition } from './types.ts';
@@ -16,12 +17,14 @@ export const PALETTE: Record<MaterialRole, string> = {
 export interface RenderedTemple {
   /** Root rotation is independent of every piece's immutable final transform. */
   root: Group;
+  camera: OrthographicCamera;
   instances: Map<string, { mesh: InstancedMesh; index: number; finalMatrix: Matrix4 }>;
   rebuild: () => void;
   dispose: () => void;
 }
 
-export function displayTemple(container: HTMLElement, definition: TempleDefinition): RenderedTemple {
+export function displayTemple(container: HTMLElement, definition: TempleDefinition, prototype?: LandingMotion[], previewDuration?:number): RenderedTemple {
+  const duration = prototype ? previewDuration ?? PROTOTYPE_DURATION : BUILD_DURATION;
   const renderer = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setClearColor(0x000000, 0);
@@ -50,12 +53,12 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     new MeshStandardMaterial({ color, roughness: .4, metalness: 0, envMapIntensity: .65 }),
   ])) as Record<MaterialRole, MeshStandardMaterial>;
 
-  const clock = { value: BUILD_DURATION };
+  const clock = { value: duration };
   const shaderMotion = (shader: { uniforms: Record<string, unknown>; vertexShader: string; fragmentShader: string }) => {
     shader.uniforms.buildTime = clock;
-    shader.vertexShader = 'attribute vec4 buildMotion; attribute float buildDrop; uniform float buildTime; varying float buildOpacity;\n' + shader.vertexShader;
+    shader.vertexShader = 'attribute vec4 buildMotion; attribute float buildDrop; attribute float buildBounce; attribute float buildEntry; attribute float buildDamping; uniform float buildTime; varying float buildOpacity;\n' + shader.vertexShader;
     shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',
-      `#include <begin_vertex>
+      prototype ? '#include <begin_vertex>\n'+LANDING_GLSL+'\nif(buildOpacity<=0.0) transformed=vec3(0.0,10000.0,0.0);' : `#include <begin_vertex>
       float progress=clamp((buildTime-buildMotion.x)/buildMotion.y,0.0,1.0);
       float seat=.055/buildDrop;
       float u=clamp(progress/.94,0.0,1.0);
@@ -72,8 +75,9 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
   Object.values(materials).forEach(m => { m.onBeforeCompile = shaderMotion; });
   const depthMaterial = new MeshDepthMaterial({ depthPacking: RGBADepthPacking });
   depthMaterial.onBeforeCompile = shaderMotion;
-  const motions = createMotionPlan(definition.pieces);
-  container.dataset.fallingEvents=String(new Set(motions).size);
+  const sample = new Map(prototype?.map(m=>[m.pieceId,m]));
+  const motions = prototype ? definition.pieces.map(p=>sample.get(p.id)??{delay:-1,duration:1,x:0,z:0,drop:0}) : createMotionPlan(definition.pieces);
+  container.dataset.fallingEvents=String(prototype?.length ?? new Set(motions).size);
   const motionById = new Map(definition.pieces.map((p,i)=>[p.id,motions[i]]));
   const instances: RenderedTemple['instances'] = new Map();
   const batches = new Map<string, BrickRecord[]>();
@@ -86,11 +90,14 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
   for (const [key, pieces] of batches) {
     const mesh = new InstancedMesh(partGeometry(pieces[0]).clone(), materials[pieces[0].material], pieces.length);
     mesh.name = key;
-    const motionData = new Float32Array(pieces.length * 4), dropData = new Float32Array(pieces.length);
-    pieces.forEach((p, i) => { const m = motionById.get(p.id)!; motionData.set([m.delay,m.duration,m.x,m.z], i*4); dropData[i]=m.drop; });
+    const motionData = new Float32Array(pieces.length * 4), dropData = new Float32Array(pieces.length), bounceData=new Float32Array(pieces.length), entryData=new Float32Array(pieces.length), dampingData=new Float32Array(pieces.length);
+    pieces.forEach((p, i) => { const m = motionById.get(p.id)!; motionData.set([m.delay,m.duration,prototype ? ('contact' in m ? (m as LandingMotion).contact-m.delay : 1) : m.x,prototype ? ('contact' in m ? (m as LandingMotion).settled-(m as LandingMotion).contact : 1) : m.z], i*4); dropData[i]=m.drop; bounceData[i]=(m as LandingMotion).bounceHeight??BOUNCE_HEIGHT; entryData[i]=(m as LandingMotion).entryFadeMs??0; dampingData[i]=(m as LandingMotion).bounceDamping??0; });
     mesh.geometry.setAttribute('buildMotion', new InstancedBufferAttribute(motionData, 4));
+    mesh.geometry.setAttribute('buildDamping',new InstancedBufferAttribute(dampingData,1));
+    mesh.geometry.setAttribute('buildEntry',new InstancedBufferAttribute(entryData,1));
+    mesh.geometry.setAttribute('buildBounce',new InstancedBufferAttribute(bounceData,1));
     mesh.geometry.setAttribute('buildDrop', new InstancedBufferAttribute(dropData, 1));
-    // Bounds move in the shader; CPU camera fitting includes their full trajectories.
+    // Shader displacement can enter from beyond the fixed camera's upper edge.
     mesh.frustumCulled = false;
     mesh.customDepthMaterial = depthMaterial;
     mesh.castShadow = true;
@@ -163,21 +170,16 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     camera.lookAt(target); camera.updateMatrixWorld();
 
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    const a = root.rotation.y, ca = Math.cos(a), sa = Math.sin(a);
     const view = camera.matrixWorldInverse.elements;
     definition.pieces.forEach((p, i) => {
-      const m = motions[i], r = remaining(m, clock.value);
       const f=framing[i],c=f.c,sn=f.s;
-      const x = p.position[0] + (c*m.x + sn*m.z)*r;
-      const z = p.position[2] + (-sn*m.x + c*m.z)*r;
-      point.set(ca*x+sa*z, p.position[1]+m.drop*r, -sa*x+ca*z).applyMatrix4(camera.matrixWorldInverse);
-      const co=c*ca-sn*sa,si=sn*ca+c*sa;
+      // Always fit the completed model at its approved hero orientation.
+      // Falling pieces and root rotation must never change camera framing.
+      point.fromArray(p.position).applyMatrix4(camera.matrixWorldInverse);
+      const co=c,si=sn;
       const {hw,hh,hd}=f;
       const ex=Math.abs(view[0]*co-view[8]*si)*hw+Math.abs(view[4])*hh+Math.abs(view[0]*si+view[8]*co)*hd;
       const ey=Math.abs(view[1]*co-view[9]*si)*hw+Math.abs(view[5])*hh+Math.abs(view[1]*si+view[9]*co)*hd;
-      minX=Math.min(minX,point.x-ex); maxX=Math.max(maxX,point.x+ex);
-      minY=Math.min(minY,point.y-ey); maxY=Math.max(maxY,point.y+ey);
-      point.set(ca*p.position[0]+sa*p.position[2],p.position[1],-sa*p.position[0]+ca*p.position[2]).applyMatrix4(camera.matrixWorldInverse);
       minX=Math.min(minX,point.x-ex); maxX=Math.max(maxX,point.x+ex);
       minY=Math.min(minY,point.y-ey); maxY=Math.max(maxY,point.y+ey);
     });
@@ -187,6 +189,9 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     camera.position.add(offset); target.add(offset); camera.lookAt(target);
     const aspect = width / height;
     let vertical = Math.max((maxY - minY) * 1.13, (maxX - minX) / aspect * 1.11);
+    // Keep the hero angle and centre, with the temple 20% smaller on screen.
+    // This static projection is shared by the entire build and completed hold.
+    vertical *= 1.25;
     if (qaView === 'closeup') vertical *= .57;
     camera.left = -vertical * aspect / 2; camera.right = vertical * aspect / 2;
     camera.top = vertical / 2; camera.bottom = -vertical / 2;
@@ -203,12 +208,12 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     clearTimeout(deadline);
     started = performance.now(); lastFrame = started; frameCount=0;frameTotal=0;maxFrame=0;
     openingFrame=true;
-    running = !reduced.matches; clock.value = running ? 0 : BUILD_DURATION;
+    running = !reduced.matches; clock.value = running ? 0 : duration;
     container.dataset.state = running ? 'building' : 'complete';
     container.dispatchEvent(new CustomEvent('buildstate', { detail: running }));
     if (running) deadline = window.setTimeout(() => {
       cancelAnimationFrame(scheduledFrame); scheduledFrame=0; render();
-    }, BUILD_DURATION);
+    }, duration);
     cancelAnimationFrame(scheduledFrame); scheduledFrame=0; render();
   };
   const render = () => {
@@ -219,24 +224,24 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     const now = performance.now();
     if (running) {
       const delta=now-lastFrame; if(delta>0){frameCount++;frameTotal+=delta;maxFrame=Math.max(maxFrame,delta);} lastFrame=now;
-      clock.value = reduced.matches ? BUILD_DURATION : openingFrame ? 0 : Math.min(BUILD_DURATION, now-started);
+      clock.value = reduced.matches ? duration : openingFrame ? 0 : Math.min(duration, now-started);
       openingFrame=false;
-      if (clock.value >= BUILD_DURATION) {
+      if (clock.value >= duration) {
         running=false; clearTimeout(deadline);
         container.dataset.state='complete';
         container.dataset.durationMs=String(now-started);
         container.dataset.maxFrameMs=String(maxFrame);
         container.dataset.averageFps=String(Math.round(1000*frameCount/frameTotal));
-        container.dataset.finalOffset=String(Math.max(...motions.map(m=>remaining(m,clock.value)*m.drop))); 
+        container.dataset.finalOffset=String(prototype ? Math.max(...prototype.map(m=>landingOffset(m,clock.value))) : Math.max(...motions.map(m=>remaining(m,clock.value)*m.drop)));
         container.dispatchEvent(new CustomEvent('buildstate', {detail:false}));
       }
     }
-    root.rotation.y = turnAngle(clock.value);
+    root.rotation.y = prototype ? prototypeAngle(clock.value,duration) : turnAngle(clock.value);
     if (width !== viewportWidth || height !== viewportHeight) {
       renderer.setSize(width, height, false); viewportWidth=width; viewportHeight=height;
+      fitCamera(width, height);
     }
     const cpuStart = performance.now();
-    fitCamera(width, height);
     renderer.shadowMap.needsUpdate = true;
     renderer.render(scene, camera);
     container.dataset.cpuFrameMs=String(performance.now()-cpuStart);
@@ -248,6 +253,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     container.dataset.drawCalls = String(renderer.info.render.calls);
     container.closest('figure')?.setAttribute('aria-busy', 'false');
     container.dispatchEvent(new Event('templeframe'));
+    container.dispatchEvent(new CustomEvent('buildprogress', {detail:{elapsed:clock.value,building:running,timelineSampleTime:now,renderedAt:performance.now()}}));
     if (running) requestRender();
   };
   const requestRender = () => {
@@ -266,7 +272,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     container.dataset.ready = 'false';
   });
   renderer.domElement.addEventListener('webglcontextrestored', requestRender);
-  const onReduced = () => { if (running && reduced.matches) { clock.value=BUILD_DURATION; started=performance.now()-BUILD_DURATION; requestRender(); } };
+  const onReduced = () => { if (running && reduced.matches) { clock.value=duration; started=performance.now()-duration; requestRender(); } };
   reduced.addEventListener('change', onReduced);
   const onVisible = () => { if (!document.hidden && running) requestRender(); };
   document.addEventListener('visibilitychange', onVisible);
@@ -285,14 +291,14 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     else {
       // Present the empty canvas once before starting the clock: first-presentation
       // compositor work must not consume a chunk of the visible construction.
-      clock.value=reduced.matches?BUILD_DURATION:0;render();
+      clock.value=reduced.matches?duration:0;render();
       renderer.domElement.style.visibility='';
       scheduledFrame=requestAnimationFrame(()=>{scheduledFrame=0;if(!disposed)rebuild();});
     }
   });
 
   return {
-    root, instances, rebuild,
+    root, camera, instances, rebuild,
     dispose() {
       disposed = true; clearTimeout(deadline); clearTimeout(fallbackFrame); reduced.removeEventListener('change', onReduced); document.removeEventListener('visibilitychange', onVisible); cancelAnimationFrame(scheduledFrame); observer.disconnect();
       root.traverse(o => { if (o instanceof InstancedMesh) { o.geometry.dispose(); o.dispose(); } });
@@ -304,4 +310,3 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     },
   };
 }
-
