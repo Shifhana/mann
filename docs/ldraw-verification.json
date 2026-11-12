@@ -1,0 +1,332 @@
+[
+  {
+    "id": "3005",
+    "url": "https://library.ldraw.org/library/official/parts/3005.dat",
+    "header": "0 Brick  1 x  1\r\n0 Name: 3005.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2022-05\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3004",
+    "url": "https://library.ldraw.org/library/official/parts/3004.dat",
+    "header": "0 Brick  1 x  2\r\n0 Name: 3004.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2022-05\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3622",
+    "url": "https://library.ldraw.org/library/official/parts/3622.dat",
+    "header": "0 Brick  1 x  3\r\n0 Name: 3622.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2004-02\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3010",
+    "url": "https://library.ldraw.org/library/official/parts/3010.dat",
+    "header": "0 Brick  1 x  4\r\n0 Name: 3010.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2025-09\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3009",
+    "url": "https://library.ldraw.org/library/official/parts/3009.dat",
+    "header": "0 Brick  1 x  6\r\n0 Name: 3009.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2003-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3008",
+    "url": "https://library.ldraw.org/library/official/parts/3008.dat",
+    "header": "0 Brick  1 x  8\r\n0 Name: 3008.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2004-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3003",
+    "url": "https://library.ldraw.org/library/official/parts/3003.dat",
+    "header": "0 Brick  2 x  2\r\n0 Name: 3003.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2022-05\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3002",
+    "url": "https://library.ldraw.org/library/official/parts/3002.dat",
+    "header": "0 Brick  2 x  3\r\n0 Name: 3002.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2003-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3001",
+    "url": "https://library.ldraw.org/library/official/parts/3001.dat",
+    "header": "0 Brick  2 x  4\r\n0 Name: 3001.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2004-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "2456",
+    "url": "https://library.ldraw.org/library/official/parts/2456.dat",
+    "header": "0 Brick  2 x  6\r\n0 Name: 2456.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2009-02\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3007",
+    "url": "https://library.ldraw.org/library/official/parts/3007.dat",
+    "header": "0 Brick  2 x  8\r\n0 Name: 3007.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2014-01\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3024",
+    "url": "https://library.ldraw.org/library/official/parts/3024.dat",
+    "header": "0 Plate  1 x  1\r\n0 Name: 3024.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2022-05\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3023",
+    "url": "https://library.ldraw.org/library/official/parts/3023.dat",
+    "header": "0 ~Moved to 3023b\r\n0 Name: 3023.dat\r\n0 Author: Orion Pobursky [OrionP]\r\n0 !LDRAW_ORG Part UPDATE 2024-07\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3623",
+    "url": "https://library.ldraw.org/library/official/parts/3623.dat",
+    "header": "0 Plate  1 x  3\r\n0 Name: 3623.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2017-01\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3710",
+    "url": "https://library.ldraw.org/library/official/parts/3710.dat",
+    "header": "0 Plate  1 x  4\r\n0 Name: 3710.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2023-06\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3666",
+    "url": "https://library.ldraw.org/library/official/parts/3666.dat",
+    "header": "0 Plate  1 x  6\r\n0 Name: 3666.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2023-02\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3460",
+    "url": "https://library.ldraw.org/library/official/parts/3460.dat",
+    "header": "0 Plate  1 x  8\r\n0 Name: 3460.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2024-01\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3022",
+    "url": "https://library.ldraw.org/library/official/parts/3022.dat",
+    "header": "0 Plate  2 x  2\r\n0 Name: 3022.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2002-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3021",
+    "url": "https://library.ldraw.org/library/official/parts/3021.dat",
+    "header": "0 Plate  2 x  3\r\n0 Name: 3021.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2002-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3020",
+    "url": "https://library.ldraw.org/library/official/parts/3020.dat",
+    "header": "0 Plate  2 x  4\r\n0 Name: 3020.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2002-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3795",
+    "url": "https://library.ldraw.org/library/official/parts/3795.dat",
+    "header": "0 Plate  2 x  6\r\n0 Name: 3795.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2025-09\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3034",
+    "url": "https://library.ldraw.org/library/official/parts/3034.dat",
+    "header": "0 Plate  2 x  8\r\n0 Name: 3034.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2003-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3031",
+    "url": "https://library.ldraw.org/library/official/parts/3031.dat",
+    "header": "0 Plate  4 x  4\r\n0 Name: 3031.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2002-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3032",
+    "url": "https://library.ldraw.org/library/official/parts/3032.dat",
+    "header": "0 Plate  4 x  6\r\n0 Name: 3032.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2002-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3035",
+    "url": "https://library.ldraw.org/library/official/parts/3035.dat",
+    "header": "0 Plate  4 x  8\r\n0 Name: 3035.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2025-09\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3068b",
+    "url": "https://library.ldraw.org/library/official/parts/3068b.dat",
+    "header": "0 Tile  2 x  2 with Groove\r\n0 Name: 3068b.dat\r\n0 Author: Takeshi Takahashi [RainbowDolphin]\r\n0 !LDRAW_ORG Part UPDATE 2024-06\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3069b",
+    "url": "https://library.ldraw.org/library/official/parts/3069b.dat",
+    "header": "0 Tile  1 x  2 with Groove\r\n0 Name: 3069b.dat\r\n0 Author: Santeri Piippo [arezey]\r\n0 !LDRAW_ORG Part UPDATE 2010-02\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3070b",
+    "url": "https://library.ldraw.org/library/official/parts/3070b.dat",
+    "header": "0 Tile  1 x  1 with Groove\r\n0 Name: 3070b.dat\r\n0 Author: Chris Dee [cwdee]\r\n0 !LDRAW_ORG Part UPDATE 2025-09\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "2431",
+    "url": "https://library.ldraw.org/library/official/parts/2431.dat",
+    "header": "0 Tile  1 x  4 with Groove\r\n0 Name: 2431.dat\r\n0 Author: Santeri Piippo [arezey]\r\n0 !LDRAW_ORG Part UPDATE 2010-02\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "6636",
+    "url": "https://library.ldraw.org/library/official/parts/6636.dat",
+    "header": "0 Tile  1 x  6\r\n0 Name: 6636.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2009-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "4162",
+    "url": "https://library.ldraw.org/library/official/parts/4162.dat",
+    "header": "0 Tile  1 x  8\r\n0 Name: 4162.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2012-01\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "87079",
+    "url": "https://library.ldraw.org/library/official/parts/87079.dat",
+    "header": "0 Tile  2 x  4\r\n0 Name: 87079.dat\r\n0 Author: Tim Gould [timgould]\r\n0 !LDRAW_ORG Part UPDATE 2025-04\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3039",
+    "url": "https://library.ldraw.org/library/official/parts/3039.dat",
+    "header": "0 Slope Brick 45  2 x  2\r\n0 Name: 3039.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2003-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3040b",
+    "url": "https://library.ldraw.org/library/official/parts/3040b.dat",
+    "header": "0 Slope Brick 45  2 x  1\r\n0 Name: 3040b.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2004-04\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "4073",
+    "url": "https://library.ldraw.org/library/official/parts/4073.dat",
+    "header": "0 ~Moved to 6141\r\n0 Name: 4073.dat\r\n0 Author: [PTadmin]\r\n0 !LDRAW_ORG Part UPDATE 2025-04\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3062b",
+    "url": "https://library.ldraw.org/library/official/parts/3062b.dat",
+    "header": "0 Brick  1 x  1 Round with Hollow Stud\r\n0 Name: 3062b.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2022-02\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "4589",
+    "url": "https://library.ldraw.org/library/official/parts/4589.dat",
+    "header": "0 Cone  1 x  1\r\n0 Name: 4589.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2010-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "1751",
+    "url": "https://library.ldraw.org/library/official/parts/1751.dat",
+    "header": "0 Tile  4 x  4\r\n0 Name: 1751.dat\r\n0 Author: Vincent Messenet [Cheenzo]\r\n0 !LDRAW_ORG Part UPDATE 2023-02\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3036",
+    "url": "https://library.ldraw.org/library/official/parts/3036.dat",
+    "header": "0 Plate  6 x  8\r\n0 Name: 3036.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2025-09\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "41539",
+    "url": "https://library.ldraw.org/library/official/parts/41539.dat",
+    "header": "0 Plate  8 x  8\r\n0 Name: 41539.dat\r\n0 Author: Martin G Cormier\r\n0 !LDRAW_ORG Part UPDATE 2004-04\r\n0 !LICENSE Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3023b",
+    "url": "https://library.ldraw.org/library/official/parts/3023b.dat",
+    "header": "0 Plate  1 x  2\r\n0 Name: 3023b.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2023-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "6141",
+    "url": "https://library.ldraw.org/library/official/parts/6141.dat",
+    "header": "0 Plate  1 x  1 Round\r\n0 Name: 6141.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2015-01\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3006",
+    "url": "https://library.ldraw.org/library/official/parts/3006.dat",
+    "header": "0 Brick  2 x 10\r\n0 Name: 3006.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2002-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "2356",
+    "url": "https://library.ldraw.org/library/official/parts/2356.dat",
+    "header": "0 Brick  4 x  6\r\n0 Name: 2356.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2025-09\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "6212",
+    "url": "https://library.ldraw.org/library/official/parts/6212.dat",
+    "header": "0 Brick  4 x 10\r\n0 Name: 6212.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2025-09\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "14716",
+    "url": "https://library.ldraw.org/library/official/parts/14716.dat",
+    "header": "0 Brick  1 x  1 x  3\r\n0 Name: 14716.dat\r\n0 Author: Owen Burgoyne [C3POwen]\r\n0 !LDRAW_ORG Part UPDATE 2014-01\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3245c",
+    "url": "https://library.ldraw.org/library/official/parts/3245c.dat",
+    "header": "0 Brick  1 x  2 x  2 without Understud\r\n0 Name: 3245c.dat\r\n0 Author: Stephan Meisinger [smr]\r\n0 !LDRAW_ORG Part UPDATE 2017-01\r\n0 !LICENSE Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3027",
+    "url": "https://library.ldraw.org/library/official/parts/3027.dat",
+    "header": "0 Plate  6 x 16\r\n0 Name: 3027.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2002-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3028",
+    "url": "https://library.ldraw.org/library/official/parts/3028.dat",
+    "header": "0 Plate  6 x 12\r\n0 Name: 3028.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2002-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "3029",
+    "url": "https://library.ldraw.org/library/official/parts/3029.dat",
+    "header": "0 Plate  4 x 12\r\n0 Name: 3029.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2002-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "92438",
+    "url": "https://library.ldraw.org/library/official/parts/92438.dat",
+    "header": "0 Plate  8 x 16\r\n0 Name: 92438.dat\r\n0 Author: Rolf Osterthun [Rolf]\r\n0 !LDRAW_ORG Part UPDATE 2011-01\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "91405",
+    "url": "https://library.ldraw.org/library/official/parts/91405.dat",
+    "header": "0 Plate 16 x 16 with Underside Ribs\r\n0 Name: 91405.dat\r\n0 Author: Donald Sutter [technog]\r\n0 !LDRAW_ORG Part UPDATE 2010-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "4477",
+    "url": "https://library.ldraw.org/library/official/parts/4477.dat",
+    "header": "0 Plate  1 x 10\r\n0 Name: 4477.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2003-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "2445",
+    "url": "https://library.ldraw.org/library/official/parts/2445.dat",
+    "header": "0 Plate  2 x 12\r\n0 Name: 2445.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2003-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  },
+  {
+    "id": "4282",
+    "url": "https://library.ldraw.org/library/official/parts/4282.dat",
+    "header": "0 Plate  2 x 16\r\n0 Name: 4282.dat\r\n0 Author: James Jessiman\r\n0 !LDRAW_ORG Part UPDATE 2003-03\r\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\r",
+    "ok": true
+  }
+]
