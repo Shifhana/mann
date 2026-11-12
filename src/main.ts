@@ -7,6 +7,8 @@ import { createFullConstruction, prominentLandings } from './temple/full-constru
 import { refineCollectible } from './temple/refine-collectible.ts';
 import { LandingAudio } from './temple/landing-audio.ts';
 import { ConstructionAudio } from './temple/audio.ts';
+import { installProgressBorder } from './progress-border.ts';
+import { BUILD_DURATION } from './temple/animation.ts';
 
 const container = document.querySelector<HTMLElement>('#temple-viewport')!;
 
@@ -40,6 +42,11 @@ try {
     const {elapsed,building,timelineSampleTime}=(event as CustomEvent<{elapsed:number;building:boolean;timelineSampleTime:number}>).detail;
     if(sound instanceof LandingAudio)sound.update(elapsed,building,timelineSampleTime);else sound.update(elapsed,building);
   });
+  // The approved final locking click occurs just before the rotation's end hold.
+  // Finish the border on that same displayed seating frame, preserving all audio.
+  const removeProgressBorder = installProgressBorder(container, prototype
+    ? Math.max(...(fullPreview ? prominentLandings(prototype) : prototype).map(m => m.settled))
+    : BUILD_DURATION);
   const visibility=()=>sound.setHidden(document.hidden);visibility();
   document.addEventListener('visibilitychange',visibility);
   controls.append(rebuild,mute);container.closest('.exhibit')!.append(controls);
@@ -50,7 +57,7 @@ try {
   if (import.meta.env.DEV && new URLSearchParams(location.search).has('record')) {
     import('./recording.ts').then(({ installRecording }) => installRecording(container, temple.rebuild));
   }
-  if (import.meta.hot) import.meta.hot.dispose(() => {sound.dispose();document.removeEventListener('visibilitychange',visibility);temple.dispose();controls.remove();});
+  if (import.meta.hot) import.meta.hot.dispose(() => {removeProgressBorder();sound.dispose();document.removeEventListener('visibilitychange',visibility);temple.dispose();controls.remove();});
 } catch (error) {
   console.error('Unable to display the Shore Temple model.', error);
   container.replaceChildren();

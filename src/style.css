@@ -18,18 +18,16 @@ body { margin: 0; min-width: 960px; }
 }
 .exhibit {
   position: relative;
-  width: 80%;
-  max-width: 1408px;
-  height: calc((100svh - 64px) * .8);
-  min-height: 480px;
-  max-height: 880px;
+  /* Fit both desktop dimensions while keeping a true golden-ratio frame. */
+  width: min(80%, 1408px, calc((100svh - 64px) * .8 * 1.618));
+  aspect-ratio: 1.618 / 1;
   background: #f6f2ea;
   border: 1px solid #c8bbab;
   border-radius: 10px;
   box-shadow: 0 12px 40px #65503808;
   overflow: hidden;
 }
-/* Retain the previous canvas dimensions so shrinking the frame does not shrink the model. */
+/* Retain the approved canvas sizing inside the proportional presentation frame. */
 .model-figure {
   position: absolute;
   width: calc((100% + 2px) / .8 - 48px);
@@ -37,6 +35,22 @@ body { margin: 0; min-width: 960px; }
   left: 50%; top: calc(50% - 24px);
   transform: translate(-50%, -50%);
   margin: 0;
+}
+.has-progress-border { border-color: transparent; }
+.progress-border {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.progress-border path {
+  fill: none;
+  stroke: #b59a73;
+  stroke-width: 1;
+  stroke-dasharray: 1;
+  vector-effect: non-scaling-stroke;
 }
 #temple-viewport { position: absolute; inset: 0; }
 #temple-viewport canvas { display: block; width: 100%; height: 100%; }
