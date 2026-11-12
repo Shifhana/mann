@@ -6,6 +6,7 @@ import {
 } from 'three';
 import { BUILD_DURATION, createMotionPlan, remaining, turnAngle } from './animation.ts';
 import { BOUNCE_HEIGHT, LANDING_GLSL, PROTOTYPE_DURATION, landingOffset, prototypeAngle, type LandingMotion } from './landing-prototype.ts';
+import { planBatches } from './batching.ts';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { disposeGeometries, geometryKey, partGeometry } from './geometry.ts';
 import type { BrickRecord, MaterialRole, TempleDefinition } from './types.ts';
@@ -72,6 +73,10 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
       float grain=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));
       if(buildOpacity<=grain) discard;`);
   };
+  // The four stone materials share every property except their linear colour.
+  // Instance colours allow equal part geometries to share a draw submission.
+  const stoneMaterial=materials.sandstone.clone();stoneMaterial.color.set(0xffffff);
+  stoneMaterial.onBeforeCompile=shaderMotion;
   Object.values(materials).forEach(m => { m.onBeforeCompile = shaderMotion; });
   const depthMaterial = new MeshDepthMaterial({ depthPacking: RGBADepthPacking });
   depthMaterial.onBeforeCompile = shaderMotion;
@@ -80,16 +85,14 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
   container.dataset.fallingEvents=String(prototype?.length ?? new Set(motions).size);
   const motionById = new Map(definition.pieces.map((p,i)=>[p.id,motions[i]]));
   const instances: RenderedTemple['instances'] = new Map();
-  const batches = new Map<string, BrickRecord[]>();
-  for (const p of definition.pieces) {
-    const key = `${geometryKey(p)}:${p.material}`;
-    const batch = batches.get(key) ?? [];
-    batch.push(p); batches.set(key, batch);
-  }
+  const plan=prototype?planBatches(definition.pieces):null;
+  const batches=plan?.batches??new Map<string,BrickRecord[]>();
+  if(!plan)for(const p of definition.pieces){const key=`${geometryKey(p)}:${p.material}`,batch=batches.get(key)??[];batch.push(p);batches.set(key,batch);}
   const object = new Object3D();
   for (const [key, pieces] of batches) {
-    const mesh = new InstancedMesh(partGeometry(pieces[0]).clone(), materials[pieces[0].material], pieces.length);
+    const mesh = new InstancedMesh(partGeometry(pieces[0]).clone(), prototype ? stoneMaterial : materials[pieces[0].material], pieces.length);
     mesh.name = key;
+    if(plan)mesh.renderOrder=plan.order.get(key)!;
     const motionData = new Float32Array(pieces.length * 4), dropData = new Float32Array(pieces.length), bounceData=new Float32Array(pieces.length), entryData=new Float32Array(pieces.length), dampingData=new Float32Array(pieces.length);
     pieces.forEach((p, i) => { const m = motionById.get(p.id)!; motionData.set([m.delay,m.duration,prototype ? ('contact' in m ? (m as LandingMotion).contact-m.delay : 1) : m.x,prototype ? ('contact' in m ? (m as LandingMotion).settled-(m as LandingMotion).contact : 1) : m.z], i*4); dropData[i]=m.drop; bounceData[i]=(m as LandingMotion).bounceHeight??BOUNCE_HEIGHT; entryData[i]=(m as LandingMotion).entryFadeMs??0; dampingData[i]=(m as LandingMotion).bounceDamping??0; });
     mesh.geometry.setAttribute('buildMotion', new InstancedBufferAttribute(motionData, 4));
@@ -108,6 +111,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
       object.rotation.set(0, p.rotationY, 0);
       object.updateMatrix();
       mesh.setMatrixAt(index, object.matrix);
+      if(prototype)mesh.setColorAt(index,materials[p.material].color);
       instances.set(p.id, { mesh, index, finalMatrix: object.matrix.clone() });
     });
     mesh.instanceMatrix.needsUpdate = true;
@@ -222,6 +226,9 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     const { width, height } = container.getBoundingClientRect();
     if (width < 1 || height < 1) return;
     const now = performance.now();
+    // rAF and the visibility fallback can arrive in the same display interval.
+    // Keep one presentation instead of submitting a second, near-identical frame.
+    if(running && !openingFrame && now-started<duration && now-lastFrame<1000/60*.75){requestRender();return;}
     if (running) {
       const delta=now-lastFrame; if(delta>0){frameCount++;frameTotal+=delta;maxFrame=Math.max(maxFrame,delta);} lastFrame=now;
       clock.value = reduced.matches ? duration : openingFrame ? 0 : Math.min(duration, now-started);
@@ -261,9 +268,11 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     scheduledFrame = requestAnimationFrame(render);
     // Some embedded/occluded surfaces throttle rAF even while reporting visible.
     // Keep the wall-clock build moving; prefer native rAF whenever it arrives first.
+    // Budget from the preceding frame start: rendering time is already part of
+    // the 16.67 ms interval, rather than an extra delay on every fallback frame.
     if (running && !document.hidden) fallbackFrame=window.setTimeout(() => {
       cancelAnimationFrame(scheduledFrame); scheduledFrame=0; render();
-    }, 1000/60);
+    }, Math.max(0,1000/60-(performance.now()-lastFrame)));
   };
   const observer = new ResizeObserver(requestRender);
   observer.observe(container);
@@ -302,7 +311,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     dispose() {
       disposed = true; clearTimeout(deadline); clearTimeout(fallbackFrame); reduced.removeEventListener('change', onReduced); document.removeEventListener('visibilitychange', onVisible); cancelAnimationFrame(scheduledFrame); observer.disconnect();
       root.traverse(o => { if (o instanceof InstancedMesh) { o.geometry.dispose(); o.dispose(); } });
-      Object.values(materials).forEach(m => m.dispose());
+      Object.values(materials).forEach(m => m.dispose());stoneMaterial.dispose();
       depthMaterial.dispose(); disposeGeometries();
       environmentMap.dispose(); groundGeometry.dispose(); groundMaterial.dispose();
       contactGeometry.dispose(); contactMaterial.dispose(); shadowTexture.dispose();

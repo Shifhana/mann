@@ -2,6 +2,7 @@ import {
   BufferGeometry, CylinderGeometry, Float32BufferAttribute, LatheGeometry,
   Vector2,
 } from 'three';
+import { indexExactGeometry } from './indexed-geometry.ts';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { BrickRecord } from './types.ts';
@@ -101,6 +102,7 @@ export function partGeometry(p: BrickRecord): BufferGeometry {
     body = mergeGeometries(components)!;
     components.forEach(c => c.dispose());
   }
+  body=indexExactGeometry(body);
   body.computeBoundingBox();
   body.computeBoundingSphere();
   geometryCache.set(key, body);
