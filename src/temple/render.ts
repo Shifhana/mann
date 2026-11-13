@@ -7,6 +7,7 @@ import {
 import { BUILD_DURATION, createMotionPlan, remaining, turnAngle } from './animation.ts';
 import { BOUNCE_HEIGHT, LANDING_GLSL, PROTOTYPE_DURATION, landingOffset, prototypeAngle, type LandingMotion } from './landing-prototype.ts';
 import { planBatches } from './batching.ts';
+import { COAST_START_MS, COAST_REVEAL_MS, coastReveal, createCoastalLandscape } from './coastal-preview.ts';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { disposeGeometries, geometryKey, partGeometry } from './geometry.ts';
 import type { BrickRecord, MaterialRole, TempleDefinition } from './types.ts';
@@ -21,10 +22,12 @@ export interface RenderedTemple {
   camera: OrthographicCamera;
   instances: Map<string, { mesh: InstancedMesh; index: number; finalMatrix: Matrix4 }>;
   rebuild: () => void;
+  resetLandscape?: () => void;
+  landscape?: Group;
   dispose: () => void;
 }
 
-export function displayTemple(container: HTMLElement, definition: TempleDefinition, prototype?: LandingMotion[], previewDuration?:number): RenderedTemple {
+export function displayTemple(container: HTMLElement, definition: TempleDefinition, prototype?: LandingMotion[], previewDuration?:number, coastalRevealAt?: number): RenderedTemple {
   const duration = prototype ? previewDuration ?? PROTOTYPE_DURATION : BUILD_DURATION;
   const renderer = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -42,6 +45,8 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
   const root = new Group();
   root.name = 'shore-temple';
   scene.add(root);
+  const coast = import.meta.env.DEV && coastalRevealAt !== undefined ? createCoastalLandscape() : undefined;
+  if (coast) scene.add(coast.group);
   const environment = new RoomEnvironment();
   const pmrem = new PMREMGenerator(renderer);
   const environmentMap = pmrem.fromScene(environment, .04);
@@ -138,6 +143,8 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
 
   const groundGeometry = new PlaneGeometry(300, 300);
   const groundMaterial = new ShadowMaterial({ color: new Color('#6c523c'), opacity: .16 });
+  // The studio shadow catcher must not occlude the preview's shallow sand/water edges.
+  if (coast) groundMaterial.depthWrite = false;
   const ground = new Mesh(groundGeometry, groundMaterial);
   ground.rotation.x = -Math.PI / 2; ground.position.y = -.07;
   ground.receiveShadow = true; scene.add(ground);
@@ -205,10 +212,12 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
   let disposed = false, scheduledFrame = 0, fallbackFrame = 0, renderCount = 0;
   let viewportWidth = 0, viewportHeight = 0;
   let running = false, started = 0, deadline = 0, warming = true, openingFrame = false;
+  let coastStarted: number | undefined, coastAllowed = false, coastAnimating = false;
   let frameCount=0,frameTotal=0,maxFrame=0,lastFrame=0;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const rebuild = () => {
     if (disposed || warming) return;
+    if (coast) { coastStarted = undefined; coastAllowed = true; coast.setReveal(0); }
     clearTimeout(deadline);
     started = performance.now(); lastFrame = started; frameCount=0;frameTotal=0;maxFrame=0;
     openingFrame=true;
@@ -229,6 +238,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     // rAF and the visibility fallback can arrive in the same display interval.
     // Keep one presentation instead of submitting a second, near-identical frame.
     if(running && !openingFrame && now-started<duration && now-lastFrame<1000/60*.75){requestRender();return;}
+    if(!running && coastAnimating && now-lastFrame<1000/60*.75){requestRender();return;}
     if (running) {
       const delta=now-lastFrame; if(delta>0){frameCount++;frameTotal+=delta;maxFrame=Math.max(maxFrame,delta);} lastFrame=now;
       clock.value = reduced.matches ? duration : openingFrame ? 0 : Math.min(duration, now-started);
@@ -243,7 +253,18 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
         container.dispatchEvent(new CustomEvent('buildstate', {detail:false}));
       }
     }
+    if (!running && coastAnimating) lastFrame = now;
     root.rotation.y = prototype ? prototypeAngle(clock.value,duration) : turnAngle(clock.value);
+    if (coast) {
+      // Scenery emerges on a separate clock while the unchanged build continues.
+      if (coastAllowed && clock.value >= COAST_START_MS) coastStarted ??= started + COAST_START_MS;
+      const elapsed = coastStarted === undefined ? 0 : now - coastStarted;
+      const reveal = reduced.matches && coastAllowed ? 1 : coastReveal(elapsed);
+      coast.setReveal(reveal);
+      coastAnimating = coastStarted !== undefined && !reduced.matches && elapsed < COAST_REVEAL_MS;
+      container.dataset.landscape = reveal === 1 ? 'complete' : reveal > 0 ? 'revealing' : 'hidden';
+      container.dataset.landscapeReveal = String(reveal);
+    }
     if (width !== viewportWidth || height !== viewportHeight) {
       renderer.setSize(width, height, false); viewportWidth=width; viewportHeight=height;
       fitCamera(width, height);
@@ -261,7 +282,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     container.closest('figure')?.setAttribute('aria-busy', 'false');
     container.dispatchEvent(new Event('templeframe'));
     container.dispatchEvent(new CustomEvent('buildprogress', {detail:{elapsed:clock.value,building:running,timelineSampleTime:now,renderedAt:performance.now()}}));
-    if (running) requestRender();
+    if (running || coastAnimating) requestRender();
   };
   const requestRender = () => {
     if (scheduledFrame || disposed) return;
@@ -270,7 +291,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     // Keep the wall-clock build moving; prefer native rAF whenever it arrives first.
     // Budget from the preceding frame start: rendering time is already part of
     // the 16.67 ms interval, rather than an extra delay on every fallback frame.
-    if (running && !document.hidden) fallbackFrame=window.setTimeout(() => {
+    if ((running || coastAnimating) && !document.hidden) fallbackFrame=window.setTimeout(() => {
       cancelAnimationFrame(scheduledFrame); scheduledFrame=0; render();
     }, Math.max(0,1000/60-(performance.now()-lastFrame)));
   };
@@ -283,7 +304,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
   renderer.domElement.addEventListener('webglcontextrestored', requestRender);
   const onReduced = () => { if (running && reduced.matches) { clock.value=duration; started=performance.now()-duration; requestRender(); } };
   reduced.addEventListener('change', onReduced);
-  const onVisible = () => { if (!document.hidden && running) requestRender(); };
+  const onVisible = () => { if (!document.hidden && (running || coastAnimating)) requestRender(); };
   document.addEventListener('visibilitychange', onVisible);
   renderer.compileAsync(scene, camera).then(() => {
     if(disposed)return;
@@ -308,11 +329,16 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
 
   return {
     root, camera, instances, rebuild,
+    ...(coast ? { landscape:coast.group, resetLandscape() {
+      coastAllowed = false; coastStarted = undefined; coastAnimating = false;
+      coast.setReveal(0); requestRender();
+    } } : {}),
     dispose() {
       disposed = true; clearTimeout(deadline); clearTimeout(fallbackFrame); reduced.removeEventListener('change', onReduced); document.removeEventListener('visibilitychange', onVisible); cancelAnimationFrame(scheduledFrame); observer.disconnect();
       root.traverse(o => { if (o instanceof InstancedMesh) { o.geometry.dispose(); o.dispose(); } });
       Object.values(materials).forEach(m => m.dispose());stoneMaterial.dispose();
       depthMaterial.dispose(); disposeGeometries();
+      coast?.dispose();
       environmentMap.dispose(); groundGeometry.dispose(); groundMaterial.dispose();
       contactGeometry.dispose(); contactMaterial.dispose(); shadowTexture.dispose();
       renderer.dispose(); renderer.domElement.remove();

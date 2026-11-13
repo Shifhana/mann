@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { borderPath, borderProgress } from '../src/progress-border.ts';
+import { borderPath, borderProgress, retractionOffset, RETRACTION_DURATION } from '../src/progress-border.ts';
 import { createTempleDefinition } from '../src/temple/model.ts';
 import { refineCollectible } from '../src/temple/refine-collectible.ts';
 import { createFullConstruction, prominentLandings } from '../src/temple/full-construction.ts';
@@ -21,4 +21,20 @@ test('border completes on the approved final lock and resets deterministically o
   assert.equal(borderProgress(lastLock, lastLock), 1);
   assert.equal(borderProgress(5000, lastLock), 1);
   assert.equal(borderProgress(0, lastLock), 0);
+});
+
+test('retraction erases from the clockwise endpoint back to the start in 300 ms', () => {
+  assert.equal(RETRACTION_DURATION, 300);
+  assert.equal(retractionOffset(0), 0);
+  assert.equal(retractionOffset(150), .5);
+  assert.equal(retractionOffset(300), 1);
+  assert.equal(retractionOffset(1000), 1);
+  let previous = 0;
+  for (let t = 0; t <= 300; t++) {
+    const offset = retractionOffset(t);
+    assert.ok(offset >= previous && offset <= 1);
+    previous = offset;
+  }
+  assert.ok(retractionOffset(1) < .001);
+  assert.ok(retractionOffset(299) > .999);
 });

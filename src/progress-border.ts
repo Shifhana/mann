@@ -9,6 +9,12 @@ export function borderProgress(elapsed: number, finalLock: number) {
   return Math.max(0, Math.min(1, elapsed / finalLock));
 }
 
+export const RETRACTION_DURATION = 300;
+export function retractionOffset(elapsed: number, from = 0) {
+  const t = Math.max(0, Math.min(1, elapsed / RETRACTION_DURATION));
+  return from + (1 - from) * t * t * (3 - 2 * t);
+}
+
 /** Consume displayed construction time; never run a second animation clock. */
 export function installProgressBorder(container: HTMLElement, finalLock: number) {
   const frame = container.closest<HTMLElement>('.exhibit')!;
@@ -30,15 +36,54 @@ export function installProgressBorder(container: HTMLElement, finalLock: number)
   const observer = new ResizeObserver(resize);
   observer.observe(frame);
   resize();
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  let disposed = false, animationFrame = 0;
+  let pending: Promise<boolean> | undefined;
+  let resolveRetraction: ((ready: boolean) => void) | undefined;
+  const paint = (offset: number) => {
+    path.style.strokeDashoffset = String(offset);
+    container.dispatchEvent(new Event('borderframe'));
+  };
+  const finish = (ready: boolean) => {
+    cancelAnimationFrame(animationFrame);
+    animationFrame = 0;
+    if (ready) paint(1);
+    const resolve = resolveRetraction;
+    pending = undefined; resolveRetraction = undefined;
+    resolve?.(ready);
+  };
+  const onReduced = () => { if (reduced.matches && pending) finish(true); };
+  reduced.addEventListener('change', onReduced);
+  const retract = () => {
+    if (disposed) return Promise.resolve(false);
+    if (pending) return pending;
+    if (reduced.matches) { paint(1); return Promise.resolve(true); }
+    const start = performance.now(), from = Number(path.style.strokeDashoffset);
+    pending = new Promise<boolean>(resolve => { resolveRetraction = resolve; });
+    const tick = () => {
+      if (disposed) return;
+      const elapsed = performance.now() - start;
+      if (elapsed >= RETRACTION_DURATION) { finish(true); return; }
+      paint(retractionOffset(elapsed, from));
+      animationFrame = requestAnimationFrame(tick);
+    };
+    animationFrame = requestAnimationFrame(tick);
+    return pending;
+  };
   const update = (event: Event) => {
+    // Static redraws/resizes must not restore the completed line mid-retraction.
+    if (pending) return;
     const { elapsed } = (event as CustomEvent<{ elapsed: number }>).detail;
     path.style.strokeDashoffset = String(1 - borderProgress(elapsed, finalLock));
   };
   container.addEventListener('buildprogress', update);
-  return () => {
+  return { retract, dispose() {
+    disposed = true;
+    finish(false);
+    reduced.removeEventListener('change', onReduced);
     observer.disconnect();
     container.removeEventListener('buildprogress', update);
     svg.remove();
     frame.classList.remove('has-progress-border');
-  };
+  } };
 }

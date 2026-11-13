@@ -19,13 +19,14 @@ try {
   if(fullPreview && !(import.meta.env.DEV && new URLSearchParams(location.search).get('detail')==='original')) definition=refineCollectible(definition);
   const prototype = fullPreview ? createFullConstruction(definition.pieces) : import.meta.env.DEV && new URLSearchParams(location.search).get('preview')==='landing' ? createLandingPrototype(definition.pieces) : undefined;
   const previewDuration=fullPreview ? Math.max(5000,Math.ceil(Math.max(...prototype!.map(m=>m.settled))+80)) : undefined;
-  const temple = displayTemple(container, definition, prototype, previewDuration);
+  const finalLock = prototype ? Math.max(...(fullPreview ? prominentLandings(prototype) : prototype).map(m => m.settled)) : BUILD_DURATION;
+  const coastalPreview = import.meta.env.DEV && new URLSearchParams(location.search).get('preview') === 'coast';
+  const temple = displayTemple(container, definition, prototype, previewDuration, coastalPreview ? finalLock : undefined);
   const sound = prototype ? new LandingAudio(fullPreview ? prominentLandings(prototype) : prototype,undefined,undefined,fullPreview ? 220 : Infinity,fullPreview) : new ConstructionAudio(createMotionPlan(definition.pieces),undefined,definition.pieces.map(p=>p.size[0]*p.size[1]*p.size[2]));
   if (import.meta.env.DEV && prototype) Object.assign(window, { __landingPreview: {temple,sound,events:prototype,container,duration:previewDuration??3000} });
   const rebuild = document.createElement('button');
   rebuild.className = 'rebuild'; rebuild.textContent = 'Rebuild';
   rebuild.setAttribute('aria-label', 'Rebuild the Shore Temple');
-  rebuild.addEventListener('click', temple.rebuild);
   const controls=document.createElement('div');controls.className='controls';
   const mute=document.createElement('button');mute.className='mute';mute.type='button';
   const updateMute=()=>{
@@ -44,9 +45,20 @@ try {
   });
   // The approved final locking click occurs just before the rotation's end hold.
   // Finish the border on that same displayed seating frame, preserving all audio.
-  const removeProgressBorder = installProgressBorder(container, prototype
-    ? Math.max(...(fullPreview ? prominentLandings(prototype) : prototype).map(m => m.settled))
-    : BUILD_DURATION);
+  const progressBorder = installProgressBorder(container, finalLock);
+  let restarting = false;
+  rebuild.addEventListener('click', async () => {
+    if (restarting || container.dataset.state !== 'complete') return;
+    restarting = true;
+    rebuild.disabled = true;
+    temple.resetLandscape?.();
+    try {
+      if (await progressBorder.retract()) temple.rebuild();
+    } finally {
+      restarting = false;
+      rebuild.disabled = container.getAttribute('data-state') === 'building';
+    }
+  });
   const visibility=()=>sound.setHidden(document.hidden);visibility();
   document.addEventListener('visibilitychange',visibility);
   controls.append(rebuild,mute);container.closest('.exhibit')!.append(controls);
@@ -57,7 +69,7 @@ try {
   if (import.meta.env.DEV && new URLSearchParams(location.search).has('record')) {
     import('./recording.ts').then(({ installRecording }) => installRecording(container, temple.rebuild));
   }
-  if (import.meta.hot) import.meta.hot.dispose(() => {removeProgressBorder();sound.dispose();document.removeEventListener('visibilitychange',visibility);temple.dispose();controls.remove();});
+  if (import.meta.hot) import.meta.hot.dispose(() => {progressBorder.dispose();sound.dispose();document.removeEventListener('visibilitychange',visibility);temple.dispose();controls.remove();});
 } catch (error) {
   console.error('Unable to display the Shore Temple model.', error);
   container.replaceChildren();

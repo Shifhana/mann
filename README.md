@@ -13,6 +13,9 @@ npm run dev
 
 Open the Local URL printed by Vite. `npm run build` type-checks and produces the static `dist/` directory; `npm run preview` serves that production build. `npm test` checks architectural voids, doorway clearance, deterministic pieces, section membership, and generated geometry.
 
+The coastal landscape experiment is available only in development at `/?preview=coast`.
+See [the coastal preview notes](docs/COASTAL-PREVIEW.md) for timing and verification.
+
 ## Architecture and reference hierarchy
 
 The supplied `images.png` plan and `shoretempleplan.jpg` plan/section establish relative footprints, the offset shrine axes, wall thickness, stepped towers, and chamber volumes. Supplied photographs guide the silhouette and simplified roof / facade details. The small Shiva shrine faces west; the larger shrine and the low Vishnu shrine face east. See the [Archaeological Survey of India description](https://asi.nic.in/pages/WorldHeritageMahabalipuram).
