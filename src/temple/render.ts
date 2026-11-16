@@ -11,6 +11,7 @@ import { COAST_START_MS, COAST_REVEAL_MS, coastReveal, createCoastalLandscape } 
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { disposeGeometries, geometryKey, partGeometry } from './geometry.ts';
 import type { BrickRecord, MaterialRole, TempleDefinition } from './types.ts';
+import type { PlanViewFactory } from './plan-view.ts';
 
 export const PALETTE: Record<MaterialRole, string> = {
   sandstone: '#B98D60', honey: '#D4B184', toasted: '#99704C', brown: '#73513A',
@@ -23,11 +24,12 @@ export interface RenderedTemple {
   instances: Map<string, { mesh: InstancedMesh; index: number; finalMatrix: Matrix4 }>;
   rebuild: () => void;
   resetLandscape?: () => void;
+  resetPlanView?: () => void;
   landscape?: Group;
   dispose: () => void;
 }
 
-export function displayTemple(container: HTMLElement, definition: TempleDefinition, prototype?: LandingMotion[], previewDuration?:number, coastalRevealAt?: number): RenderedTemple {
+export function displayTemple(container: HTMLElement, definition: TempleDefinition, prototype?: LandingMotion[], previewDuration?:number, coastalRevealAt?: number, planFactory?: PlanViewFactory): RenderedTemple {
   const duration = prototype ? previewDuration ?? PROTOTYPE_DURATION : BUILD_DURATION;
   const renderer = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -45,6 +47,8 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
   const root = new Group();
   root.name = 'shore-temple';
   scene.add(root);
+  const planView = import.meta.env.DEV ? planFactory?.(definition) : undefined;
+  if (planView) root.add(planView.group);
   const coast = import.meta.env.DEV && coastalRevealAt !== undefined ? createCoastalLandscape() : undefined;
   if (coast) scene.add(coast.group);
   const environment = new RoomEnvironment();
@@ -77,6 +81,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
       `#include <clipping_planes_fragment>
       float grain=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));
       if(buildOpacity<=grain) discard;`);
+    planView?.patchShader(shader);
   };
   // The four stone materials share every property except their linear colour.
   // Instance colours allow equal part geometries to share a draw submission.
@@ -105,6 +110,8 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     mesh.geometry.setAttribute('buildEntry',new InstancedBufferAttribute(entryData,1));
     mesh.geometry.setAttribute('buildBounce',new InstancedBufferAttribute(bounceData,1));
     mesh.geometry.setAttribute('buildDrop', new InstancedBufferAttribute(dropData, 1));
+    if (planView) mesh.geometry.setAttribute('planEligible', new InstancedBufferAttribute(new Float32Array(pieces.map(p => planView.eligible(p) ? 1 : 0)), 1));
+    if (planView) mesh.geometry.setAttribute('planDetailTop', new InstancedBufferAttribute(new Float32Array(pieces.map(p => planView.detailTop(p))), 1));
     // Shader displacement can enter from beyond the fixed camera's upper edge.
     mesh.frustumCulled = false;
     mesh.customDepthMaterial = depthMaterial;
@@ -124,21 +131,23 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     root.add(mesh);
   }
 
-  const keyLight = new DirectionalLight('#fff7ed', 2.5);
-  keyLight.position.set(-35, 75, 45);
+  // One fixed coastal sun: front-left in the approved hero composition.
+  const keyLight = new DirectionalLight('#fff5e6', 3);
+  keyLight.position.set(-50, 68, 52);
   keyLight.target.position.set(0, 5, 0);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(2048, 2048);
-  keyLight.shadow.camera.left = -65; keyLight.shadow.camera.right = 65;
-  keyLight.shadow.camera.top = 65; keyLight.shadow.camera.bottom = -65;
+  keyLight.shadow.camera.left = -58; keyLight.shadow.camera.right = 58;
+  keyLight.shadow.camera.top = 58; keyLight.shadow.camera.bottom = -58;
   keyLight.shadow.camera.near = 1; keyLight.shadow.camera.far = 180;
-  keyLight.shadow.bias = -.0003;
-  keyLight.shadow.normalBias = .04;
-  keyLight.shadow.radius = 12;
+  keyLight.shadow.bias = -.00015;
+  keyLight.shadow.normalBias = .025;
+  keyLight.shadow.radius = 2.5;
+  keyLight.shadow.intensity = .78;
   scene.add(keyLight, keyLight.target);
-  scene.add(new HemisphereLight('#f8f4ee', '#b6a394', .7));
+  scene.add(new HemisphereLight('#f8f4ee', '#b6a394', .65));
   scene.add(new AmbientLight('#fff5e8', .12));
-  const fill = new DirectionalLight('#edf1fa', .5);
+  const fill = new DirectionalLight('#edf1fa', .25);
   fill.position.set(45, 25, -30); scene.add(fill);
 
   const groundGeometry = new PlaneGeometry(300, 300);
@@ -198,15 +207,22 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     up.setFromMatrixColumn(camera.matrixWorld, 1);
     const offset = right.multiplyScalar((minX + maxX) / 2).add(up.multiplyScalar((minY + maxY) / 2));
     camera.position.add(offset); target.add(offset); camera.lookAt(target);
-    const aspect = width / height;
+    // Fit the approved composition, then render extra ground below it. Extending
+    // only the lower frustum keeps every existing world point at the same pixel
+    // position while the canvas covers the short desktop frame all the way down.
+    // This is resize-only; construction, rotation and the shared clock are intact.
+    const compositionHeight = container.closest('.exhibit')!.getBoundingClientRect().height / .8 - 112;
+    const aspect = width / compositionHeight;
     let vertical = Math.max((maxY - minY) * 1.13, (maxX - minX) / aspect * 1.11);
     // Keep the hero angle and centre, with the temple 20% smaller on screen.
     // This static projection is shared by the entire build and completed hold.
     vertical *= 1.25;
     if (qaView === 'closeup') vertical *= .57;
     camera.left = -vertical * aspect / 2; camera.right = vertical * aspect / 2;
-    camera.top = vertical / 2; camera.bottom = -vertical / 2;
+    camera.top = vertical / 2;
+    camera.bottom = -vertical / 2 - Math.max(0, height - compositionHeight) * vertical / compositionHeight;
     camera.updateProjectionMatrix();
+    planView?.fitInteraction(camera, width, height);
   }
 
   let disposed = false, scheduledFrame = 0, renderCount = 0;
@@ -214,9 +230,12 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
   let running = false, started = 0, deadline = 0, warming = true, openingFrame = false;
   let coastStarted: number | undefined, coastAllowed = false, coastAnimating = false;
   let frameCount=0,frameTotal=0,maxFrame=0,lastFrame=0;
+  let pointerOnCanvas = false, pointerX = 0, pointerY = 0, hoverInside = false, keyboardFocus = false;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const rebuild = () => {
     if (disposed || warming) return;
+    planView?.reset();
+    pointerOnCanvas = hoverInside = keyboardFocus = false;
     if (coast) { coastStarted = undefined; coastAllowed = true; coast.setReveal(0); }
     clearTimeout(deadline);
     started = performance.now(); lastFrame = started; frameCount=0;frameTotal=0;maxFrame=0;
@@ -250,7 +269,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
         container.dispatchEvent(new CustomEvent('buildstate', {detail:false}));
       }
     }
-    if (!running && coastAnimating) lastFrame = now;
+    if (!running && (coastAnimating || planView?.animating)) lastFrame = now;
     root.rotation.y = prototype ? prototypeAngle(clock.value,duration) : turnAngle(clock.value);
     if (coast) {
       // Scenery emerges on a separate clock while the unchanged build continues.
@@ -261,6 +280,16 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
       coastAnimating = coastStarted !== undefined && !reduced.matches && elapsed < COAST_REVEAL_MS;
       container.dataset.landscape = reveal === 1 ? 'complete' : reveal > 0 ? 'revealing' : 'hidden';
       container.dataset.landscapeReveal = String(reveal);
+    }
+    if (planView) {
+      syncPlanInput(now);
+      planView.update(now);
+      coast?.setPlanEmphasis(planView.emphasis);
+      container.dataset.viewMode = planView.animating ? planView.timeline.target === 1 ? 'cutting' : 'restoring' : planView.timeline.progress === 1 ? 'plan' : 'exterior';
+      container.dataset.planProgress = String(planView.timeline.progress);
+      renderer.domElement.setAttribute('aria-pressed', String(planView.timeline.target === 1));
+      renderer.domElement.setAttribute('aria-disabled', String(!readyForPlan()));
+      renderer.domElement.setAttribute('aria-label', 'Shore Temple. Hover or focus to reveal its architectural plan; leave or move focus away to restore the exterior.');
     }
     if (width !== viewportWidth || height !== viewportHeight) {
       renderer.setSize(width, height, false); viewportWidth=width; viewportHeight=height;
@@ -279,12 +308,44 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     container.closest('figure')?.setAttribute('aria-busy', 'false');
     container.dispatchEvent(new Event('templeframe'));
     container.dispatchEvent(new CustomEvent('buildprogress', {detail:{elapsed:clock.value,building:running,timelineSampleTime:now,renderedAt:performance.now()}}));
-    if (running || coastAnimating) requestRender();
+    if (running || coastAnimating || planView?.animating) requestRender();
   };
   const requestRender = () => {
     if (scheduledFrame || disposed) return;
     scheduledFrame = requestAnimationFrame(render);
   };
+  const readyForPlan = () => !warming && !running && container.dataset.state === 'complete' && (!coast || container.dataset.landscape === 'complete');
+  const syncPlanInput = (now: number) => {
+    if (!planView) return false;
+    hoverInside = pointerOnCanvas && planView.containsPointer(pointerX, pointerY, hoverInside);
+    return planView.setRevealed(readyForPlan() && (hoverInside || keyboardFocus), now, reduced.matches);
+  };
+  const updatePlanInput = () => { if (syncPlanInput(performance.now())) requestRender(); };
+  const onPlanPointer = (event: PointerEvent) => {
+    if (event.pointerType === 'touch') return;
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointerOnCanvas = true; pointerX = event.clientX - rect.left; pointerY = event.clientY - rect.top;
+    updatePlanInput();
+  };
+  const onPlanLeave = () => { pointerOnCanvas = hoverInside = false; updatePlanInput(); };
+  const onPlanFocus = () => { keyboardFocus = renderer.domElement.matches(':focus-visible'); updatePlanInput(); };
+  const onPlanBlur = () => { keyboardFocus = false; updatePlanInput(); };
+  const onPlanKey = (event: KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); keyboardFocus = true; updatePlanInput(); }
+    if (event.key === 'Escape') { renderer.domElement.blur(); }
+  };
+  if (planView) {
+    renderer.domElement.removeAttribute('aria-hidden');
+    renderer.domElement.tabIndex = 0;
+    renderer.domElement.setAttribute('role', 'button');
+    renderer.domElement.addEventListener('pointerenter', onPlanPointer);
+    renderer.domElement.addEventListener('pointermove', onPlanPointer);
+    renderer.domElement.addEventListener('pointerleave', onPlanLeave);
+    renderer.domElement.addEventListener('pointercancel', onPlanLeave);
+    renderer.domElement.addEventListener('focus', onPlanFocus);
+    renderer.domElement.addEventListener('blur', onPlanBlur);
+    renderer.domElement.addEventListener('keydown', onPlanKey);
+  }
   const observer = new ResizeObserver(requestRender);
   observer.observe(container);
   renderer.domElement.addEventListener('webglcontextlost', event => {
@@ -292,10 +353,14 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     container.dataset.ready = 'false';
   });
   renderer.domElement.addEventListener('webglcontextrestored', requestRender);
-  const onReduced = () => { if (running && reduced.matches) { clock.value=duration; started=performance.now()-duration; requestRender(); } };
+  const onReduced = () => {
+    if (running && reduced.matches) { clock.value=duration; started=performance.now()-duration; requestRender(); }
+    if (planView?.animating && reduced.matches) { planView.timeline.finish(); requestRender(); }
+  };
   reduced.addEventListener('change', onReduced);
-  const onVisible = () => { if (!document.hidden && (running || coastAnimating)) requestRender(); };
+  const onVisible = () => { if (!document.hidden && (running || coastAnimating || planView?.animating)) requestRender(); };
   document.addEventListener('visibilitychange', onVisible);
+  planView?.prepareWarmup();
   renderer.compileAsync(scene, camera).then(() => {
     if(disposed)return;
     // Warm the actual screen/depth programs, not an offscreen colour-space variant.
@@ -306,6 +371,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     renderer.setSize(viewportWidth,viewportHeight,false);
     fitCamera(viewportWidth,viewportHeight);renderer.shadowMap.needsUpdate=true;
     renderer.render(scene,camera);renderer.getContext().finish();renderer.clear();
+    planView?.reset();
     warming=false;
     if(qaView){render();renderer.domElement.style.visibility='';}
     else {
@@ -319,6 +385,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
 
   return {
     root, camera, instances, rebuild,
+    ...(planView ? { resetPlanView() { pointerOnCanvas = hoverInside = keyboardFocus = false; planView.reset(); requestRender(); } } : {}),
     ...(coast ? { landscape:coast.group, resetLandscape() {
       coastAllowed = false; coastStarted = undefined; coastAnimating = false;
       coast.setReveal(0); requestRender();
@@ -328,6 +395,14 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
       root.traverse(o => { if (o instanceof InstancedMesh) { o.geometry.dispose(); o.dispose(); } });
       Object.values(materials).forEach(m => m.dispose());stoneMaterial.dispose();
       depthMaterial.dispose(); disposeGeometries();
+      planView?.dispose();
+      renderer.domElement.removeEventListener('pointerenter', onPlanPointer);
+      renderer.domElement.removeEventListener('pointermove', onPlanPointer);
+      renderer.domElement.removeEventListener('pointerleave', onPlanLeave);
+      renderer.domElement.removeEventListener('pointercancel', onPlanLeave);
+      renderer.domElement.removeEventListener('focus', onPlanFocus);
+      renderer.domElement.removeEventListener('blur', onPlanBlur);
+      renderer.domElement.removeEventListener('keydown', onPlanKey);
       coast?.dispose();
       environmentMap.dispose(); groundGeometry.dispose(); groundMaterial.dispose();
       contactGeometry.dispose(); contactMaterial.dispose(); shadowTexture.dispose();

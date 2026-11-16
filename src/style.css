@@ -1,39 +1,65 @@
 @import '@fontsource/dm-sans/latin-400.css';
+@import '@fontsource/dm-sans/latin-500.css';
 @import '@fontsource/dm-sans/latin-600.css';
+@import '@fontsource/crimson-text/latin-600.css';
 
 :root {
   font-family: 'DM Sans', sans-serif;
-  color: #79634e;
-  background: #eee9e1;
+  color: #3e352e;
+  background: #f3efe8;
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
 }
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 960px; }
+body { margin: 0; min-width: 960px; min-height: 100svh; display: grid; place-items: center; }
 .collection {
-  min-height: 100svh;
-  padding: 32px;
-  display: grid;
-  place-items: center;
+  /* Figma's 838px page includes 218.5px of header, facts and outer spacing.
+     Only the 1.618 scene shrinks on shorter desktops; UI dimensions stay fixed. */
+  --page-height: min(838px, 100svh);
+  width: min(1000px, calc(100vw - 64px), calc((var(--page-height) - 218.5px) * 1.618));
+  min-height: var(--page-height);
+  margin-inline: auto;
+  padding-block: 48px 56px;
 }
+.exhibition-heading { display: flex; align-items: center; justify-content: space-between; gap: 32px; padding-inline: 12px; margin-bottom: 6px; }
+.exhibition-heading h1 {
+  margin: 0;
+  width: 144px;
+  font-family: 'Crimson Text', serif;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+  letter-spacing: .2px;
+  color: #51463b;
+}
+.location {
+  margin: 0;
+  width: 222px;
+  color: rgb(62.5% 56.04682% 50.180286%);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 21px;
+  letter-spacing: .005em;
+  text-align: right;
+}
+.frame-shell { position: relative; width: 100%; }
 .exhibit {
   position: relative;
-  /* Fit both desktop dimensions while keeping a true golden-ratio frame. */
-  width: min(80%, 1408px, calc((100svh - 64px) * .8 * 1.618));
+  width: 100%;
   aspect-ratio: 1.618 / 1;
   background: #f6f2ea;
   border: 1px solid #c8bbab;
   border-radius: 10px;
-  box-shadow: 0 12px 40px #65503808;
   overflow: hidden;
 }
 /* Retain the approved canvas sizing inside the proportional presentation frame. */
 .model-figure {
   position: absolute;
   width: calc((100% + 2px) / .8 - 48px);
-  height: calc((100% + 2px) / .8 - 112px);
-  left: 50%; top: calc(50% - 24px);
-  transform: translate(-50%, -50%);
+  /* Preserve the approved image origin; add only the missing bottom overscan. */
+  height: max(calc((100% + 2px) / .8 - 112px), calc((100% + 2px) * 1.125 - 32px));
+  left: 50%; top: calc(31px - (100% + 2px) * .125);
+  transform: translateX(-50%);
   margin: 0;
 }
 .has-progress-border { border-color: transparent; }
@@ -44,8 +70,9 @@ body { margin: 0; min-width: 960px; }
   height: 100%;
   overflow: visible;
   pointer-events: none;
+  z-index: 2;
 }
-.progress-border path {
+.progress-border > path {
   fill: none;
   stroke: #b59a73;
   stroke-width: 1;
@@ -55,26 +82,98 @@ body { margin: 0; min-width: 960px; }
 #temple-viewport { position: absolute; inset: 0; }
 #temple-viewport canvas { display: block; width: 100%; height: 100%; }
 .controls {
+  /* Interlock with the empty lower margin; canvas dimensions stay unchanged. */
   position: absolute;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding-inline: 28px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 24px;
+  pointer-events: none;
 }
-.rebuild, .mute {
-  border: 1px solid #bbaa9670;
-  border-radius: 6px;
-  padding: 11px 22px;
-  background: #faf7f1;
-  color: #79634e;
-  font: 400 12px 'DM Sans', sans-serif;
+.control-recess {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  pointer-events: auto;
+}
+.controls-left { gap: 12px; }
+.control-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 36px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 4px 4px 0 0;
+  background: #f3efe8;
+  color: #51463b;
+  font: 500 13px/20px 'DM Sans', sans-serif;
+  letter-spacing: .005em;
+  white-space: nowrap;
   cursor: pointer;
 }
-.mute { width: 40px; height: 40px; padding: 9px; display: grid; place-items: center; }
-.mute svg { width: 20px; height: 20px; }
-.rebuild:hover, .mute:hover { background: #eee6d9; }
-.rebuild:focus-visible, .mute:focus-visible { outline: 2px solid #99704c; outline-offset: 4px; }
-.rebuild:disabled { cursor: default; opacity: .55; }
+.control-button svg, .control-button img { flex: none; width: 16px; height: 16px; }
+.rebuild { width: 86.6px; }
+.control-button { flex: none; }
+.rebuild .control-label { width: 46px; }
+.mute .control-label { width: 59px; }
+.postcard span { width: 120px; }
+.control-button span { text-align: center; }
+/* Fit the unchanged progress label without moving the frame's control junctions. */
+.rebuild:disabled { font-size: 11px; }
+.rebuild:disabled img { display: none; }
+.rebuild:disabled .control-label { width: auto; }
+.mute { width: 99.6px; }
+.control-button:not(:disabled):hover { background: #e5dccd; }
+.control-button:focus-visible { outline: 2px solid #99704c; outline-offset: -2px; }
+.control-button:disabled { cursor: default; color: #51463b; }
+.postcard:disabled { width: 160.6px; color: #51463b; }
+.facts {
+  position: relative;
+  margin-top: 24px;
+  padding-top: 16.5px;
+}
+.facts-divider { position: absolute; inset: 0 0 auto; display: block; width: 100%; height: 1px; overflow: visible; pointer-events: none; }
+.facts-divider line { stroke: #e0d7ca; stroke-width: .5; vector-effect: non-scaling-stroke; }
+.ticker-window { height: 40px; overflow: hidden; }
+.ticker-window:focus-visible { outline: 1px solid #99704c; outline-offset: 6px; }
+.ticker-track { display: flex; width: max-content; }
+.ticker-group {
+  display: flex;
+  flex: none;
+  gap: 64px;
+  margin: 0;
+  padding: 0 64px 0 0;
+  list-style: none;
+}
+.ticker-fact {
+  flex: none;
+  white-space: nowrap;
+  color: #74695f;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 24px;
+}
+/* Retain Figma's text frames so font rasterisation cannot accumulate ticker drift. */
+.ticker-fact:nth-child(1) { width: 436px; }
+.ticker-fact:nth-child(2) { width: 508px; }
+.ticker-fact:nth-child(3) { width: 571px; }
+.facts[data-ready] .ticker-track { animation: fact-ticker var(--ticker-duration) linear infinite; }
+.facts:hover .ticker-track, .facts:focus-within .ticker-track, .facts[data-paused] .ticker-track { animation-play-state: paused; }
+@keyframes fact-ticker { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .facts[data-ready] .ticker-track { animation: none; transform: none; }
+  .ticker-copy { display: none; }
+  .ticker-window { overflow-x: auto; scrollbar-width: thin; }
+}
 .fallback, .render-error { padding: 24px; text-align: center; color: #79634e; }

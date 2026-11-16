@@ -9,8 +9,11 @@ import { LandingAudio } from './temple/landing-audio.ts';
 import { ConstructionAudio } from './temple/audio.ts';
 import { installProgressBorder } from './progress-border.ts';
 import { BUILD_DURATION } from './temple/animation.ts';
+import { installFacts } from './facts.ts';
 
 const container = document.querySelector<HTMLElement>('#temple-viewport')!;
+const facts=installFacts(document.querySelector<HTMLElement>('.facts')!);
+if(import.meta.hot)import.meta.hot.dispose(()=>facts.dispose());
 
 try {
   const inspection = import.meta.env.DEV ? new URLSearchParams(location.search).get('compare') : null;
@@ -20,19 +23,24 @@ try {
   const prototype = fullPreview ? createFullConstruction(definition.pieces) : import.meta.env.DEV && new URLSearchParams(location.search).get('preview')==='landing' ? createLandingPrototype(definition.pieces) : undefined;
   const previewDuration=fullPreview ? Math.max(5000,Math.ceil(Math.max(...prototype!.map(m=>m.settled))+80)) : undefined;
   const finalLock = prototype ? Math.max(...(fullPreview ? prominentLandings(prototype) : prototype).map(m => m.settled)) : BUILD_DURATION;
-  const coastalPreview = import.meta.env.DEV && new URLSearchParams(location.search).get('preview') === 'coast';
-  const temple = displayTemple(container, definition, prototype, previewDuration, coastalPreview ? finalLock : undefined);
+  const planModule = import.meta.env.DEV && ['plan', 'section'].includes(new URLSearchParams(location.search).get('preview') ?? '') ? await import('./temple/plan-view.ts') : undefined;
+  const coastalPreview = import.meta.env.DEV && (new URLSearchParams(location.search).get('preview') === 'coast' || !!planModule);
+  const temple = displayTemple(container, definition, prototype, previewDuration, coastalPreview ? finalLock : undefined, planModule?.createPlanView);
   const sound = prototype ? new LandingAudio(fullPreview ? prominentLandings(prototype) : prototype,undefined,undefined,fullPreview ? 220 : Infinity,fullPreview) : new ConstructionAudio(createMotionPlan(definition.pieces),undefined,definition.pieces.map(p=>p.size[0]*p.size[1]*p.size[2]));
   if (import.meta.env.DEV && prototype) Object.assign(window, { __landingPreview: {temple,sound,events:prototype,container,duration:previewDuration??3000} });
   const rebuild = document.createElement('button');
-  rebuild.className = 'rebuild'; rebuild.textContent = 'Rebuild';
+  rebuild.className = 'rebuild control-button'; rebuild.type = 'button';
+  rebuild.innerHTML = '<img src="/ui/rebuild.svg" width="16" height="16" alt="" aria-hidden="true"><span class="control-label">Rebuild</span>';
   rebuild.setAttribute('aria-label', 'Rebuild the Shore Temple');
   const controls=document.createElement('div');controls.className='controls';
-  const mute=document.createElement('button');mute.className='mute';mute.type='button';
+  controls.setAttribute('role','group');controls.setAttribute('aria-label','Model controls');
+  const controlsLeft=document.createElement('div');controlsLeft.className='controls-left control-recess';
+  const controlsRight=document.createElement('div');controlsRight.className='controls-right control-recess';
+  const mute=document.createElement('button');mute.className='mute control-button';mute.type='button';
   const updateMute=()=>{
     mute.setAttribute('aria-label',sound.muted?'Unmute construction sounds':'Mute construction sounds');
     mute.title=sound.muted?'Unmute':'Mute';mute.setAttribute('aria-pressed',String(!sound.muted));
-    mute.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/>${sound.muted?'<path d="m16 9 5 6m0-6-5 6"/>':'<path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>'}</svg>`;
+    mute.innerHTML=`${sound.muted?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="m16 9 5 6m0-6-5 6"/></svg>':'<img src="/ui/sound-on.svg" width="16" height="16" alt="" aria-hidden="true">'}<span class="control-label">Sound ${sound.muted?'off':'on'}</span>`;
   };
   updateMute();
   mute.addEventListener('click',()=>{
@@ -51,6 +59,7 @@ try {
     if (restarting || container.dataset.state !== 'complete') return;
     restarting = true;
     rebuild.disabled = true;
+    temple.resetPlanView?.();
     temple.resetLandscape?.();
     try {
       if (await progressBorder.retract()) temple.rebuild();
@@ -61,10 +70,14 @@ try {
   });
   const visibility=()=>sound.setHidden(document.hidden);visibility();
   document.addEventListener('visibilitychange',visibility);
-  controls.append(rebuild,mute);container.closest('.exhibit')!.append(controls);
+  const postcard=document.createElement('button');postcard.className='postcard control-button';postcard.type='button';postcard.disabled=true;
+  postcard.title='Postcard downloads are coming soon';postcard.setAttribute('aria-label','Download Postcard — coming soon');
+  postcard.innerHTML='<img src="/ui/download.svg" width="16" height="16" alt="" aria-hidden="true"><span>Download Postcard</span>';
+  controlsLeft.append(rebuild,mute);controlsRight.append(postcard);controls.append(controlsLeft,controlsRight);container.closest('.exhibit')!.after(controls);
+  progressBorder.fitControls();
   container.addEventListener('buildstate', event => {
     rebuild.disabled = (event as CustomEvent<boolean>).detail;
-    rebuild.textContent = rebuild.disabled ? 'Assembling…' : 'Rebuild';
+    rebuild.querySelector('.control-label')!.textContent = rebuild.disabled ? 'Assembling…' : 'Rebuild';
   });
   if (import.meta.env.DEV && new URLSearchParams(location.search).has('record')) {
     import('./recording.ts').then(({ installRecording }) => installRecording(container, temple.rebuild));

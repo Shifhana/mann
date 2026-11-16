@@ -3,17 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f2ede4" />
+    <meta name="theme-color" content="#f3efe8" />
     <meta name="description" content="The Shore Temple, Mahabalipuram. A warm stone-toned, brick-built architectural miniature." />
     <title>Shore Temple — An architectural miniature</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body>
     <main class="collection">
-      <section class="exhibit" aria-label="Shore Temple miniature">
-        <figure class="model-figure" aria-busy="true">
-          <div id="temple-viewport" role="img" aria-label="An isometric LEGO-style Shore Temple in warm sandstone colours. Two stepped towers flank a low connecting Vishnu shrine, with recessed entrances, a stepped plinth, and Nandi figures on the enclosure walls."></div>
-        </figure>
+      <header class="exhibition-heading">
+        <h1>SHORE TEMPLE</h1>
+        <p class="location">Mahabalipuram, Tamil Nadu, India</p>
+      </header>
+      <div class="frame-shell">
+        <section class="exhibit" aria-label="Shore Temple miniature">
+          <figure class="model-figure" aria-busy="true">
+            <div id="temple-viewport" role="img" aria-label="An isometric LEGO-style Shore Temple in warm sandstone colours. Two stepped towers flank a low connecting Vishnu shrine, with recessed entrances, a stepped plinth, and Nandi figures on the enclosure walls."></div>
+          </figure>
+        </section>
+      </div>
+      <section class="facts" aria-label="Shore Temple facts" aria-live="off">
+        <svg class="facts-divider" width="100%" height="1" aria-hidden="true"><line x1="0" y1=".25" x2="100%" y2=".25" /></svg>
+        <div class="ticker-window" tabindex="0" aria-label="Historical facts. Pauses while focused; scroll horizontally with reduced motion.">
+          <div class="ticker-track">
+            <!-- Historical wording verified against ASI: https://asi.nic.in/pages/WorldHeritageMahabalipuram -->
+            <ul class="ticker-group">
+              <li class="ticker-fact">Pallava king Rajasimha built the Shore Temple in the early eighth century.</li>
+              <li class="ticker-fact">Its two Shiva shrines face opposite directions, with a reclining Vishnu between them.</li>
+              <li class="ticker-fact">Mahabalipuram’s rathas were carved from single rocks; the Shore Temple was built as masonry.</li>
+            </ul>
+          </div>
+        </div>
       </section>
     </main>
     <noscript><p class="fallback">Enable JavaScript to view the 3D architectural miniature.</p></noscript>

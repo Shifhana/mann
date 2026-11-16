@@ -18,11 +18,12 @@ test('landscape growth has a deterministic 4.5-second clock with no overshoot', 
   }
 });
 
-test('separate site geometry stays low and cannot cast shadows onto the temple', () => {
+test('low coastal trees share the temple sun while the ground never casts shadows', () => {
   const coast = createCoastalLandscape();
   assert.equal(coast.group.name, 'coastal-preview');
   for (const mesh of coast.group.children) {
-    assert.equal(mesh.castShadow, false);
+    assert.equal(mesh.castShadow, mesh.name !== 'sand');
+    assert.equal(mesh.receiveShadow, true);
     assert.equal(mesh.material.opacity, 0);
     assert.equal(mesh.material.depthWrite, false);
     assert.ok([...mesh.geometry.getAttribute('position').array].every(Number.isFinite));

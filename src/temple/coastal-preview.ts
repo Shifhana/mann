@@ -1,5 +1,6 @@
 import { Color, CylinderGeometry, Group, Mesh, MeshStandardMaterial, PlaneGeometry, Vector2, Vector4, type BufferGeometry } from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { TREE_QUIETENING } from './plan-style.ts';
 
 export const COAST_START_MS = 2000;
 export const COAST_REVEAL_MS = 4500;
@@ -32,6 +33,7 @@ export function createCoastalLandscape() {
   };
   const sand=material('#E8C998','sand'),trunk=material('#896E4C','tree-trunk');
   const leaf=material('#527C51','foliage'),upper=material('#7EA165','foliage-light');
+  const leafOriginal=leaf.color.clone(),upperOriginal=upper.color.clone(),quietSage=new Color('#A2A38A');
   sand.roughness=.68; sand.envMapIntensity=.35;
   leaf.roughness=upper.roughness=.4; leaf.envMapIntensity=upper.envMapIntensity=.65;
   const seaColor=new Color('#567F99'),shallowColor=new Color('#98BFC0'),wetColor=new Color('#C9B58E');
@@ -78,7 +80,9 @@ export function createCoastalLandscape() {
   };
   const add=(geometry:BufferGeometry,mat:MeshStandardMaterial,x=0,y=0,z=0)=>{
     geometries.add(geometry);const mesh=new Mesh(geometry,mat);
-    mesh.name=mat.name;mesh.position.set(x,y,z);mesh.castShadow=false;mesh.receiveShadow=mat===sand;
+    // Trees use the temple's single sun/shadow map, including their growth poses.
+    // The expansive ground never casts; its existing contact shading is retained.
+    mesh.name=mat.name;mesh.position.set(x,y,z);mesh.castShadow=mat!==sand;mesh.receiveShadow=true;
     mesh.renderOrder=mat===sand?-20:mat===trunk?-15:mat===leaf?-14:-13;
     mesh.frustumCulled=false;group.add(mesh);return mesh;
   };
@@ -101,6 +105,11 @@ export function createCoastalLandscape() {
     mesh.scale.x=mesh.scale.z=bloom ? .35+.65*q : 1;
   };
   return {group,
+    setPlanEmphasis(amount:number){
+      const t=clamp(amount)*TREE_QUIETENING;
+      leaf.color.copy(leafOriginal).lerp(quietSage,t);
+      upper.color.copy(upperOriginal).lerp(quietSage,t);
+    },
     setReveal(progress:number){
       const elapsed=clamp(progress)*COAST_REVEAL_MS;
       const appearance=coastAppearance(elapsed);

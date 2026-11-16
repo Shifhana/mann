@@ -1,5 +1,8 @@
 # Shore Temple — An architectural miniature
 
+The development-only fixed-camera hover architectural section is available at `?preview=plan`.
+See [Plan View notes](docs/PLAN-VIEW.md) for architectural level, interaction and verification.
+
 A local TypeScript / Vite / Three.js scene presenting a static, warm stone-toned LEGO-style Shore Temple. Phases 1 and 2 are implemented: a completed architectural miniature and a replayable construction animation. Section interaction remains deferred.
 
 ## Run
@@ -38,7 +41,7 @@ The four materials are sandstone `#B98D60`, honey `#D4B184`, toasted stone `#997
 
 For review, `?record=1` in development exposes a real-time 1× canvas recording control. It saves `.qa/construction-1x.ivf` through a local development endpoint. This control and recorder are excluded from production. The recording contains the live model canvas and title/location/rebuild text; it is not an OS screen capture.
 
-**Phase 3:** Genuine chamber floors, inner wall faces, ceilings, lingam assemblies, and an abstract reclining Vishnu are already enclosed inside the completed model. The stepped section path passes through each offset chamber. Piece membership is conservative at section jogs. `crossing` pieces will require capped, paired geometric fragments in Phase 3; membership alone is not a finished cutaway. Near-side removal, clipping/capping, accessible toggles, and transition behaviour are intentionally deferred.
+**Architectural plan preview:** `?preview=plan` reveals all three existing chambers on hover through one descending horizontal cut. Actual per-brick cut faces use matte warm brown with restrained darker contour bands; vertical walls remain sandstone. Pale interior floors, distinct actual thresholds and subtle interior fill clarify chamber depth without adding passage geometry. Foliage becomes quieter only during the section. No joined slab or extrusion is drawn. The exterior camera stays absolutely fixed, and leaving the temple's stable interaction area restores the complete model exactly. The approved inventory and construction records stay unchanged. Production promotion remains deferred. See [the section notes](docs/PLAN-VIEW.md).
 
 ## Visual verification
 
