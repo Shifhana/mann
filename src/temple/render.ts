@@ -209,7 +209,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     camera.updateProjectionMatrix();
   }
 
-  let disposed = false, scheduledFrame = 0, fallbackFrame = 0, renderCount = 0;
+  let disposed = false, scheduledFrame = 0, renderCount = 0;
   let viewportWidth = 0, viewportHeight = 0;
   let running = false, started = 0, deadline = 0, warming = true, openingFrame = false;
   let coastStarted: number | undefined, coastAllowed = false, coastAnimating = false;
@@ -224,21 +224,18 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     running = !reduced.matches; clock.value = running ? 0 : duration;
     container.dataset.state = running ? 'building' : 'complete';
     container.dispatchEvent(new CustomEvent('buildstate', { detail: running }));
-    if (running) deadline = window.setTimeout(() => {
-      cancelAnimationFrame(scheduledFrame); scheduledFrame=0; render();
-    }, duration);
+    if (running) deadline = window.setTimeout(requestRender, duration);
     cancelAnimationFrame(scheduledFrame); scheduledFrame=0; render();
   };
-  const render = () => {
-    scheduledFrame = 0; clearTimeout(fallbackFrame); fallbackFrame=0;
+  const render = (frameTime?: number) => {
+    scheduledFrame = 0;
     if (disposed || warming) return;
     const { width, height } = container.getBoundingClientRect();
     if (width < 1 || height < 1) return;
-    const now = performance.now();
-    // rAF and the visibility fallback can arrive in the same display interval.
-    // Keep one presentation instead of submitting a second, near-identical frame.
-    if(running && !openingFrame && now-started<duration && now-lastFrame<1000/60*.75){requestRender();return;}
-    if(!running && coastAnimating && now-lastFrame<1000/60*.75){requestRender();return;}
+    // One display clock drives physics, rotation, scenery, border and audio.
+    // Timers must never cancel or race a pending presentation. rAF's timestamp
+    // also avoids turning callback scheduling jitter into uneven motion steps.
+    const now = frameTime ?? performance.now();
     if (running) {
       const delta=now-lastFrame; if(delta>0){frameCount++;frameTotal+=delta;maxFrame=Math.max(maxFrame,delta);} lastFrame=now;
       clock.value = reduced.matches ? duration : openingFrame ? 0 : Math.min(duration, now-started);
@@ -287,13 +284,6 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
   const requestRender = () => {
     if (scheduledFrame || disposed) return;
     scheduledFrame = requestAnimationFrame(render);
-    // Some embedded/occluded surfaces throttle rAF even while reporting visible.
-    // Keep the wall-clock build moving; prefer native rAF whenever it arrives first.
-    // Budget from the preceding frame start: rendering time is already part of
-    // the 16.67 ms interval, rather than an extra delay on every fallback frame.
-    if ((running || coastAnimating) && !document.hidden) fallbackFrame=window.setTimeout(() => {
-      cancelAnimationFrame(scheduledFrame); scheduledFrame=0; render();
-    }, Math.max(0,1000/60-(performance.now()-lastFrame)));
   };
   const observer = new ResizeObserver(requestRender);
   observer.observe(container);
@@ -334,7 +324,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
       coast.setReveal(0); requestRender();
     } } : {}),
     dispose() {
-      disposed = true; clearTimeout(deadline); clearTimeout(fallbackFrame); reduced.removeEventListener('change', onReduced); document.removeEventListener('visibilitychange', onVisible); cancelAnimationFrame(scheduledFrame); observer.disconnect();
+      disposed = true; clearTimeout(deadline); reduced.removeEventListener('change', onReduced); document.removeEventListener('visibilitychange', onVisible); cancelAnimationFrame(scheduledFrame); observer.disconnect();
       root.traverse(o => { if (o instanceof InstancedMesh) { o.geometry.dispose(); o.dispose(); } });
       Object.values(materials).forEach(m => m.dispose());stoneMaterial.dispose();
       depthMaterial.dispose(); disposeGeometries();
