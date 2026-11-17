@@ -162,6 +162,13 @@ export function createPlanView(definition: TempleDefinition) {
     prepareWarmup() { group.visible = true; },
     get animating() { return timeline.animating; },
     get emphasis() { return planEmphasis(timeline.progress); },
+    /** Temporarily render an exterior image without advancing/resetting hover. */
+    withExterior<T>(draw: () => T): T {
+      const active=uniforms.planActive.value, depth=uniforms.planDepthStrength.value, visible=group.visible;
+      uniforms.planActive.value=0;uniforms.planDepthStrength.value=0;group.visible=false;
+      try { return draw(); }
+      finally { uniforms.planActive.value=active;uniforms.planDepthStrength.value=depth;group.visible=visible; }
+    },
     eligible: planEligible,
     detailTop(p: BrickRecord) { return isSectionRelief(p) ? p.position[1]+p.size[1]/2+(p.studs ? .18 : 0) : -1000; },
     setRevealed(revealed: boolean, now: number, reduced: boolean) { return timeline.setRevealed(revealed, now, reduced); },

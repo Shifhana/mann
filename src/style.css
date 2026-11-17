@@ -137,7 +137,7 @@ body { margin: 0; min-width: 960px; min-height: 100svh; display: grid; place-ite
 .control-button:not(:disabled):hover { background: #e5dccd; }
 .control-button:focus-visible { outline: 2px solid #99704c; outline-offset: -2px; }
 .control-button:disabled { cursor: default; color: #51463b; }
-.postcard:disabled { width: 160.6px; color: #51463b; }
+.postcard { width: 160.6px; color: #51463b; }
 .facts {
   position: relative;
   margin-top: 24px;

@@ -1,4 +1,5 @@
 import './style.css';
+import './postcard.css';
 import { createTempleDefinition } from './temple/model.ts';
 import { displayTemple } from './temple/render.ts';
 import { createMotionPlan } from './temple/animation.ts';
@@ -10,6 +11,8 @@ import { ConstructionAudio } from './temple/audio.ts';
 import { installProgressBorder } from './progress-border.ts';
 import { BUILD_DURATION } from './temple/animation.ts';
 import { installFacts } from './facts.ts';
+import { installPostcard } from './postcard.ts';
+import { shoreTemple } from './buildings.ts';
 
 const container = document.querySelector<HTMLElement>('#temple-viewport')!;
 const facts=installFacts(document.querySelector<HTMLElement>('.facts')!);
@@ -38,7 +41,7 @@ try {
   const controlsRight=document.createElement('div');controlsRight.className='controls-right control-recess';
   const mute=document.createElement('button');mute.className='mute control-button';mute.type='button';
   const updateMute=()=>{
-    mute.setAttribute('aria-label',sound.muted?'Unmute construction sounds':'Mute construction sounds');
+    mute.setAttribute('aria-label',sound.muted?'Sound off — unmute construction sounds':'Sound on — mute construction sounds');
     mute.title=sound.muted?'Unmute':'Mute';mute.setAttribute('aria-pressed',String(!sound.muted));
     mute.innerHTML=`${sound.muted?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="m16 9 5 6m0-6-5 6"/></svg>':'<img src="/ui/sound-on.svg" width="16" height="16" alt="" aria-hidden="true">'}<span class="control-label">Sound ${sound.muted?'off':'on'}</span>`;
   };
@@ -59,6 +62,7 @@ try {
     if (restarting || container.dataset.state !== 'complete') return;
     restarting = true;
     rebuild.disabled = true;
+    postcardPreview.reset();
     temple.resetPlanView?.();
     temple.resetLandscape?.();
     try {
@@ -75,6 +79,7 @@ try {
   postcard.innerHTML='<img src="/ui/download.svg" width="16" height="16" alt="" aria-hidden="true"><span>Download Postcard</span>';
   controlsLeft.append(rebuild,mute);controlsRight.append(postcard);controls.append(controlsLeft,controlsRight);container.closest('.exhibit')!.after(controls);
   progressBorder.fitControls();
+  const postcardPreview=installPostcard(postcard,container,temple,shoreTemple);
   container.addEventListener('buildstate', event => {
     rebuild.disabled = (event as CustomEvent<boolean>).detail;
     rebuild.querySelector('.control-label')!.textContent = rebuild.disabled ? 'Assembling…' : 'Rebuild';
@@ -82,7 +87,7 @@ try {
   if (import.meta.env.DEV && new URLSearchParams(location.search).has('record')) {
     import('./recording.ts').then(({ installRecording }) => installRecording(container, temple.rebuild));
   }
-  if (import.meta.hot) import.meta.hot.dispose(() => {progressBorder.dispose();sound.dispose();document.removeEventListener('visibilitychange',visibility);temple.dispose();controls.remove();});
+  if (import.meta.hot) import.meta.hot.dispose(() => {postcardPreview.dispose();progressBorder.dispose();sound.dispose();document.removeEventListener('visibilitychange',visibility);temple.dispose();controls.remove();});
 } catch (error) {
   console.error('Unable to display the Shore Temple model.', error);
   container.replaceChildren();

@@ -2,7 +2,7 @@ import {
   ACESFilmicToneMapping, AmbientLight, CanvasTexture, Color, DirectionalLight, Group,
   HemisphereLight, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial,
   InstancedBufferAttribute, MeshDepthMaterial, RGBADepthPacking, Object3D, OrthographicCamera, PCFShadowMap, PlaneGeometry, PMREMGenerator, Scene,
-  ShadowMaterial, SRGBColorSpace, Vector3, WebGLRenderer,
+  ShadowMaterial, SRGBColorSpace, Vector2, Vector3, WebGLRenderer,
 } from 'three';
 import { BUILD_DURATION, createMotionPlan, remaining, turnAngle } from './animation.ts';
 import { BOUNCE_HEIGHT, LANDING_GLSL, PROTOTYPE_DURATION, landingOffset, prototypeAngle, type LandingMotion } from './landing-prototype.ts';
@@ -12,6 +12,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { disposeGeometries, geometryKey, partGeometry } from './geometry.ts';
 import type { BrickRecord, MaterialRole, TempleDefinition } from './types.ts';
 import type { PlanViewFactory } from './plan-view.ts';
+import { postcardCamera } from './postcard-camera.ts';
 
 export const PALETTE: Record<MaterialRole, string> = {
   sandstone: '#B98D60', honey: '#D4B184', toasted: '#99704C', brown: '#73513A',
@@ -26,6 +27,7 @@ export interface RenderedTemple {
   resetLandscape?: () => void;
   resetPlanView?: () => void;
   landscape?: Group;
+  capturePostcard: () => HTMLCanvasElement;
   dispose: () => void;
 }
 
@@ -385,6 +387,30 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
 
   return {
     root, camera, instances, rebuild,
+    capturePostcard() {
+      if (disposed || warming || running || (coast && container.dataset.landscape !== 'complete')) throw new Error('The miniature is still assembling.');
+      // A dedicated scene render, not a screenshot of the page or its canvas.
+      // Reuse this context, environment and light resources; create no new loop.
+      const size=renderer.getSize(new Vector2()),ratio=renderer.getPixelRatio();
+      const previewCamera=postcardCamera(camera,definition.pieces,1662/1230);
+      const temporaryCoast=coast ? undefined : createCoastalLandscape();
+      if(temporaryCoast){temporaryCoast.setReveal(1);scene.add(temporaryCoast.group);}
+      const emphasis=planView?.emphasis??0;
+      const output=document.createElement('canvas');output.width=1662;output.height=1230;
+      const draw=()=>{
+        renderer.setPixelRatio(1);renderer.setSize(output.width,output.height,false);
+        renderer.shadowMap.needsUpdate=true;renderer.render(scene,previewCamera);
+        output.getContext('2d')!.drawImage(renderer.domElement,0,0);
+      };
+      coast?.setPlanEmphasis(0);
+      try { if(planView)planView.withExterior(draw);else draw(); }
+      finally {
+        temporaryCoast?.dispose();coast?.setPlanEmphasis(emphasis);
+        renderer.setPixelRatio(ratio);renderer.setSize(size.x,size.y,false);
+        renderer.shadowMap.needsUpdate=true;renderer.render(scene,camera);
+      }
+      return output;
+    },
     ...(planView ? { resetPlanView() { pointerOnCanvas = hoverInside = keyboardFocus = false; planView.reset(); requestRender(); } } : {}),
     ...(coast ? { landscape:coast.group, resetLandscape() {
       coastAllowed = false; coastStarted = undefined; coastAnimating = false;
