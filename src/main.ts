@@ -13,10 +13,12 @@ import { BUILD_DURATION } from './temple/animation.ts';
 import { installFacts } from './facts.ts';
 import { installPostcard } from './postcard.ts';
 import { shoreTemple } from './buildings.ts';
+import { installHeritageHeading } from './heritage-heading.ts';
 
 const container = document.querySelector<HTMLElement>('#temple-viewport')!;
 const facts=installFacts(document.querySelector<HTMLElement>('.facts')!);
-if(import.meta.hot)import.meta.hot.dispose(()=>facts.dispose());
+const heading=installHeritageHeading(document.querySelector<HTMLElement>('.heritage-heading')!);
+if(import.meta.hot)import.meta.hot.dispose(()=>{facts.dispose();heading.dispose();});
 
 try {
   const inspection = import.meta.env.DEV ? new URLSearchParams(location.search).get('compare') : null;

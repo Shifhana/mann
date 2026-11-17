@@ -7,11 +7,15 @@
     <meta name="description" content="The Shore Temple, Mahabalipuram. A warm stone-toned, brick-built architectural miniature." />
     <title>Shore Temple — An architectural miniature</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preload" href="/fonts/tiro-tamil/TiroTamil-Regular.ttf" as="font" type="font/ttf" crossorigin />
   </head>
   <body>
     <main class="collection">
       <header class="exhibition-heading">
-        <h1>SHORE TEMPLE</h1>
+        <h1 class="heritage-heading" tabindex="0">
+          <span class="heading-english" lang="en">SHORE TEMPLE</span>
+          <span class="heading-tamil" lang="ta">கடற்கரைக் கோயில்</span>
+        </h1>
         <p class="location">Mahabalipuram, Tamil Nadu, India</p>
       </header>
       <div class="frame-shell">
@@ -21,15 +25,19 @@
           </figure>
         </section>
       </div>
-      <section class="facts" aria-label="Shore Temple facts" aria-live="off">
+      <section class="facts" aria-label="Shore Temple facts and playful observations" aria-live="off">
         <svg class="facts-divider" width="100%" height="1" aria-hidden="true"><line x1="0" y1=".25" x2="100%" y2=".25" /></svg>
-        <div class="ticker-window" tabindex="0" aria-label="Historical facts. Pauses while focused; scroll horizontally with reduced motion.">
+        <div class="ticker-window" tabindex="0" aria-label="Historical facts and playful observations. Pauses while focused; scroll horizontally with reduced motion.">
           <div class="ticker-track">
-            <!-- Historical wording verified against ASI: https://asi.nic.in/pages/WorldHeritageMahabalipuram -->
+            <!-- History: ASI, https://asi.nic.in/pages/WorldHeritageMahabalipuram.
+                 Observations are Brickit's creative commentary, not historical claims. -->
             <ul class="ticker-group">
-              <li class="ticker-fact">Pallava king Rajasimha built the Shore Temple in the early eighth century.</li>
-              <li class="ticker-fact">Its two Shiva shrines face opposite directions, with a reclining Vishnu between them.</li>
-              <li class="ticker-fact">Mahabalipuram’s rathas were carved from single rocks; the Shore Temple was built as masonry.</li>
+              <li class="ticker-fact" data-kind="history" aria-label="Historical fact: Rajasimha’s Pallava builders raised the Shore Temple in the early eighth century.">Rajasimha’s Pallava builders raised the Shore Temple in the early eighth century.</li>
+              <li class="ticker-fact" data-kind="observation" aria-label="Playful observation: The original builders didn’t have Ctrl + Z.">The original builders didn’t have Ctrl + Z.</li>
+              <li class="ticker-fact" data-kind="history" aria-label="Historical fact: Two Shiva shrines face opposite directions; a reclining Vishnu rests between them.">Two Shiva shrines face opposite directions; a reclining Vishnu rests between them.</li>
+              <li class="ticker-fact" data-kind="observation" aria-label="Playful observation: 1,911 pieces. Zero instruction manuals.">1,911 pieces. Zero instruction manuals.</li>
+              <li class="ticker-fact" data-kind="history" aria-label="Historical fact: Nearby rathas were carved from single rocks. This temple was assembled as masonry.">Nearby rathas were carved from single rocks. This temple was assembled as masonry.</li>
+              <li class="ticker-fact" data-kind="observation" aria-label="Playful observation: Built centuries before the Rebuild button existed.">Built centuries before the Rebuild button existed.</li>
             </ul>
           </div>
         </div>

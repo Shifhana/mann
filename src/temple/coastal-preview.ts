@@ -86,7 +86,7 @@ export function createCoastalLandscape() {
     mesh.renderOrder=mat===sand?-20:mat===trunk?-15:mat===leaf?-14:-13;
     mesh.frustumCulled=false;group.add(mesh);return mesh;
   };
-  const ground=new PlaneGeometry(1200,1200);ground.rotateX(-Math.PI/2);add(ground,sand,0,-.04,0);
+  const ground=new PlaneGeometry(1200,1200);ground.rotateX(-Math.PI/2);const surface=add(ground,sand,0,-.04,0);
 
   const c=1/Math.hypot(1,.6),s=.6/Math.hypot(1,.6),turn=Math.atan(.6);
   const lowerCrown=new RoundedBoxGeometry(2.8,.8,1.8,1,.09),upperCrown=new RoundedBoxGeometry(1.9,.65,1.4,1,.08);
@@ -104,7 +104,7 @@ export function createCoastalLandscape() {
     mesh.visible=q>0;mesh.scale.y=q;mesh.position.y=bottom+height*q/2;
     mesh.scale.x=mesh.scale.z=bloom ? .35+.65*q : 1;
   };
-  return {group,
+  return {group, surface, trees:trees.map((tree,i)=>({anchor:anchors[i],parts:[tree.stem,tree.lower,tree.upper,...tree.studs]})),
     setPlanEmphasis(amount:number){
       const t=clamp(amount)*TREE_QUIETENING;
       leaf.color.copy(leafOriginal).lerp(quietSage,t);

@@ -11,20 +11,29 @@
   max-width: none; max-height: none; margin: auto; padding: 0; border: 0;
   background: transparent; overflow: visible; color: #503e2e;
 }
-.postcard-dialog::backdrop { background: rgb(38 33 26 / .48); transition: background 240ms ease; }
+.postcard-dialog::backdrop { background: rgb(38 33 26 / .8); transition: background 240ms ease; }
 .postcard-dialog.is-closing::backdrop { background: transparent; }
 @starting-style { .postcard-dialog[open]::backdrop { background: transparent; } }
-.postcard-actions { display: flex; justify-content: flex-end; padding-bottom: 14px; }
-.postcard-close {
-  display: inline-flex; align-items: center; justify-content: center; gap: 14px;
-  min-height: 32px; padding: 4px 0 4px 14px; border: 0; border-radius: 0;
-  background: transparent; color: #fff8eb; font: 400 13px/20px 'DM Sans', sans-serif;
+.postcard-actions { display: flex; justify-content: space-between; gap: 16px; padding-bottom: 14px; }
+.postcard-action {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  height: 36px; padding: 7px 8px; border: 1px solid #b9a486; border-radius: 4px 4px 0 0;
+  background: #f3efe8; color: #51463b; font: 500 13px/20px 'DM Sans', sans-serif;
   cursor: pointer;
 }
-.postcard-close:hover { color: white; }
-.postcard-close:focus-visible { outline: 1px solid #fff8eb; outline-offset: 5px; }
+.postcard-close { width: 86.6px; }
+.postcard-download { width: 160.6px; }
+.postcard-action svg, .postcard-action img { flex: 0 0 16px; }
+.postcard-action:hover:not(:disabled) { background: #e8dfd2; }
+.postcard-action:disabled { cursor: wait; opacity: .65; }
+.postcard-action:focus-visible { outline: 2px solid #fff8eb; outline-offset: 4px; }
+.postcard-status { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); margin: 0; color: #fff8eb; font: 400 12px/20px 'DM Sans', sans-serif; white-space: nowrap; pointer-events: none; }
 .postcard-sheet {
-  position: relative; width: 100%; overflow: hidden;
+  position: relative; width: 100%; aspect-ratio: 602 / 490; overflow: hidden;
+  background: #FAF9F6; color: #3e352e;
+}
+.postcard-composition {
+  width: 100%; margin-inline: auto;
   container-type: inline-size; background: #FAF9F6; color: #3e352e;
 }
 .postcard-content {
