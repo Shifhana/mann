@@ -1,66 +1,43 @@
-# Shore Temple — An architectural miniature
+# Brickit — Shore Temple
 
-The development-only fixed-camera hover architectural section is available at `?preview=plan`.
-See [Plan View notes](docs/PLAN-VIEW.md) for architectural level, interaction and verification.
+An interactive, 1,911-piece architectural miniature of the Shore Temple at Mahabalipuram. The five-second build, coastal reveal, horizontal plan section, six visitors, tree/water interactions, Tamil heading, ticker and postcard preview/export are enabled at `/` in production. Sound is muted until the visitor enables it.
 
-A local TypeScript / Vite / Three.js scene presenting a static, warm stone-toned LEGO-style Shore Temple. Phases 1 and 2 are implemented: a completed architectural miniature and a replayable construction animation. Section interaction remains deferred.
+## Local checks
 
-## Run
-
-Requires Node.js 22.12+ (developed on Node 24).
+Use Node.js 24 (Node 22.12+ is supported by Vite) and the checked-in package lock.
 
 ```sh
-npm install
-npm run dev
+npm ci
+npx tsc --noEmit
+npm test
+npm run build
+npm run preview
 ```
 
-Open the Local URL printed by Vite. `npm run build` type-checks and produces the static `dist/` directory; `npm run preview` serves that production build. `npm test` checks architectural voids, doorway clearance, deterministic pieces, section membership, and generated geometry.
+`npm run build` includes TypeScript validation and generates `dist/`. Open the exact local URL printed by Vite. Desktop targets are 1366×768, 1440×900, 1536×864 and 1920×1080. WebGL2 and hardware acceleration are required. Mobile and other browsers require a separate QA pass.
 
-The coastal landscape experiment is available only in development at `/?preview=coast`.
-See [the coastal preview notes](docs/COASTAL-PREVIEW.md) for timing and verification.
+## Vercel settings (prepared; not deployed)
 
-## Architecture and reference hierarchy
+- Framework: Vite; root directory: this repository.
+- Install: `npm ci`; build: `npm run build`; output: `dist`.
+- `vercel.json` records these settings. The application uses a single root route; no blanket SPA rewrite is needed. Asset URLs are root-relative and missing files remain real 404s rather than returning HTML.
+- No backend, runtime secrets or additional packages are needed. `.vercelignore` excludes local review artifacts from uploads.
+- Optionally set build variable `SITE_URL` to the final HTTPS origin (for example, your chosen custom domain). Otherwise metadata uses `VERCEL_PROJECT_PRODUCTION_URL`, falling back to `VERCEL_URL`. This supplies absolute sharing-image/canonical URLs at build time. Preview sharing images use the preview deployment host so they do not depend on an unpublished production site. Local builds without these values use a root-relative sharing image and omit canonical/og:url rather than inventing a public domain.
+- `public/social-preview.png` is a 1200×630 capture of the approved interface and actual model. Retain the supplied favicon. Refresh the sharing artwork only when an approved appearance changes.
+- After deployment, check actual HTTPS URLs, asset caching and social-network unfurling. Those cannot be verified from a local preview.
 
-The supplied `images.png` plan and `shoretempleplan.jpg` plan/section establish relative footprints, the offset shrine axes, wall thickness, stepped towers, and chamber volumes. Supplied photographs guide the silhouette and simplified roof / facade details. The small Shiva shrine faces west; the larger shrine and the low Vishnu shrine face east. See the [Archaeological Survey of India description](https://asi.nic.in/pages/WorldHeritageMahabalipuram).
+## Behaviour and accessibility
 
-The plate `images (3).jfif` also depicts Kailasanatha at Kanchipuram and labels its Shore Temple view as a conjectural restoration. Neither its unrelated temple nor its speculative lost buildings are reproduced. The original references remain in the user's `refre` directory; they are not runtime assets or redistributed with the site.
+The main-page location label uses #76695C on #F3EFE8 (4.64:1 contrast), retaining its original typography and position. The fixed camera, five-second timeline and existing architecture remain unchanged. Hover or focus the completed temple to reveal its plan; leaving or moving focus away restores the exterior. Enter/Space and Escape are also supported. The viewport is an accessible group containing a separately named plan control. The heading and controls support keyboard focus; the ticker pauses on hover/focus. Reduced motion shows a completed, stationary model and disables decorative motion.
 
-This is a clean, reference-derived miniature, not a surveyed reconstruction or a physically buildable LEGO instruction set. Carvings and Nandi figures are deliberately abstracted into small part assemblies. The main shrine has five stepped tower tiers; the secondary shrine has three; the connecting shrine remains low and flat-roofed. No imaginary occupied tower storeys are added.
+Visitors begin after the landscape settles. Exterior visitor recycling requires masonry concealment and pauses while plan view exposes reset locations. Figures and environmental interactions sleep when the page is hidden. Normal visitor movement intentionally renders while active.
 
-## Model organisation
+The postcard is 602:490, exports to 3000×2442 PNG and always captures the finished exterior through a detached scene. Preview and export share the approved composition and DM Mono typography. Metadata colours were darkened for normal-text contrast on ivory: coordinates `#77716B`, location `#807060`; building name remains `#583622`.
 
-- `src/temple/model.ts` defines architecture in stud pitches (+X east, +Z south). One plate is 0.4 units; a standard brick is 1.2. Foundations, wall courses, thick chamber walls, recessed niches, interiors, cornices, roof mass, caps, and enclosure details remain discrete pieces.
-- `src/temple/types.ts` defines serialisable `BrickRecord` and `TempleDefinition` data. Every piece has an ID, local final transform, shape, material role, architectural group, assembly stage, and section membership. Integrated studs move with their parent piece.
-- `src/temple/geometry.ts` caches reusable closed part geometries. `render.ts` batches them by shape and material, retaining an ID → instance → final matrix mapping. All instances belong to one model root.
+## Architecture, assets and scope
 
-The four materials are sandstone `#B98D60`, honey `#D4B184`, toasted stone `#99704C`, and warm brown `#73513A`. Assignments follow architectural roles, not random per-brick colour changes. The scene renders continuously only during construction, then stops when idle. A 3.9-second wall-clock timeline drives GPU instanced attributes and matching depth shaders. The camera fits both the final architecture and active falling bricks. Reduced-motion users see the completed model immediately.
+This is a stylised, reference-derived miniature, not a surveyed reconstruction or a physically buildable instruction set. Shrine connections follow the existing model; no invented rooms or passages are added. See `docs/PLAN-VIEW.md` and `docs/COASTAL-PREVIEW.md` for historical implementation notes (their development-only status is superseded by this release).
 
-## Preparation for subsequent phases
+Fonts are bundled locally with their Open Font Licences. Recorded construction contacts are CC0; provenance is in `public/audio/landing-prototype/LICENSE.md`. Environmental textures and plan clicks are original procedural synthesis. No external audio service, tracking or music is used. Brickit is an independent project; LEGO is a trademark of the LEGO Group, which does not sponsor or endorse this project.
 
-**Phase 2:** Implemented in `animation.ts` and `render.ts`. All pieces participate in overlapping stage-ordered drops; full-size pieces enter their falling wave at the upper rain-entry height. No geometry is omitted from the finished model. Instance matrices remain immutable; the shader displacement becomes exactly zero at completion. A 25.7-degree root rotation ends at zero, matching the hero camera. Rebuild uses the same deterministic trajectory data. Late frames and background-tab resumption snap to the correct wall-clock state.
-
-For review, `?record=1` in development exposes a real-time 1× canvas recording control. It saves `.qa/construction-1x.ivf` through a local development endpoint. This control and recorder are excluded from production. The recording contains the live model canvas and title/location/rebuild text; it is not an OS screen capture.
-
-**Architectural plan preview:** `?preview=plan` reveals all three existing chambers on hover through one descending horizontal cut. Actual per-brick cut faces use matte warm brown with restrained darker contour bands; vertical walls remain sandstone. Pale interior floors, distinct actual thresholds and subtle interior fill clarify chamber depth without adding passage geometry. Foliage becomes quieter only during the section. No joined slab or extrusion is drawn. The exterior camera stays absolutely fixed, and leaving the temple's stable interaction area restores the complete model exactly. The approved inventory and construction records stay unchanged. Production promotion remains deferred. See [the section notes](docs/PLAN-VIEW.md).
-
-## Visual verification
-
-Development-only URLs `?view=plan`, `?view=elevation`, and `?view=rear` provide fixed alternate inspection cameras. Production ignores these parameters and always presents the approved hero camera. These are inspection views, not visitor controls. Renderer metrics appear as `data-*` attributes on `#temple-viewport` for checking readiness and idle rendering.
-
-The site bundles Cormorant Garamond and DM Sans through Fontsource (SIL Open Font License). It makes no third-party font or model requests at runtime. No account, backend, or analytics are required.
-
-## Catalogue optimisation
-
-The current model contains 2,145 pieces, including 2,117 catalogue-backed elements and 28 explicit architectural exceptions. See [the parts audit](docs/PARTS-AUDIT.md) for inventory, LDraw sources, geometry simplifications and the exceptions. Large surfaces use standard plates and tiles; small cornice and entrance assemblies remain detailed. Geometry orientations are canonicalised for instanced batching. The motion uses deterministic spatial ordering, coordinated decorative assemblies and monotone seating, with all pieces settled by 3.75 seconds before the 3.9-second rotation deadline.
-
-## Visual-fidelity consolidation
-
-The 2,492-piece approved benchmark remains reproducible through the development-only `?compare=benchmark` URL. The default model uses 2,145 pieces. `consolidate.ts` replaces exact rectangular unions with verified larger standard parts, preserving masonry volume, material, group, assembly stage and section classification. Sculptural geometry and sacred interiors are unchanged. The more aggressive 2,048-piece QA variant is not the delivered default because it loses visible decorative brick courses. See [the comparison report](docs/FIDELITY-OPTIMISATION.md).
-
-Animation still uses the 3.9-second wall-clock timeline. A 60 Hz fallback runs only when a visible embedded surface delays requestAnimationFrame; native frame callbacks cancel that fallback when healthy. The deadline renders the completed state directly. Both schedules stop when construction completes.
-
-## Cinematic construction update
-
-See [the cinematic verification report](docs/CINEMATIC-ANIMATION.md) for current motion design, measured frame rates, exact model preservation and the real-time review recording. The development recorder uses explicit wall-clock timestamps in a VP8 IVF file; convert to MP4 without retiming for playback.
-
-The latest readable-rain refinement reduces 1,518 independent falling events to 531 (305 individual pieces and 226 compact assemblies), while preserving all 2,145 final pieces. See [readable rain review](docs/READABLE-RAIN.md).
+Development-only comparison modes, diagnostics and the local `/__recording` middleware are not exposed by the production application. QA assets stay under ignored `.qa/`; they are not part of `dist/`.

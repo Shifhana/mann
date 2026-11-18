@@ -39,8 +39,8 @@ export function paintPostcard(canvas: HTMLCanvasElement, image: HTMLCanvasElemen
     context.fillText(value, x, baseline);
   };
   text(building.name.toUpperCase(), left, 12, 500, '#583622', 'left', .48);
-  text(formatCoordinates(building), width / 2, 11, 400, '#AEAEAE', 'center');
-  text(building.location.toUpperCase(), left + imageWidth, 12, 500, '#9F8F80', 'right', .48);
+  text(formatCoordinates(building), width / 2, 11, 400, '#77716B', 'center');
+  text(building.location.toUpperCase(), left + imageWidth, 12, 500, '#807060', 'right', .48);
 }
 
 export async function postcardPng(capture: () => HTMLCanvasElement, building: Building): Promise<Blob> {

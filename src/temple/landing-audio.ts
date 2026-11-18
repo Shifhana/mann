@@ -29,6 +29,7 @@ export class LandingAudio {
  private elapsed=3000;private building=false;private hidden=false;private disposed=false;private revision=0;
  private epoch:number|undefined;private cursor=0;private age=0;
  private capture:MediaStreamAudioDestinationNode|undefined;
+ private interactionBus:GainNode|undefined;
  private timeline:{time:number;kind:'contact'|'lock';index:number}[];
  private events:LandingMotion[];private factory:()=>AudioContext;private loader:(ctx:AudioContext)=>Promise<AudioBuffer[]>;private lookAhead:number;private frameLocked:boolean;
  /** Development verification: sources actually scheduled, not inferred audible events. */
@@ -67,6 +68,7 @@ export class LandingAudio {
   if(this.epoch===undefined||!Number.isFinite(this.lookAhead)&&drift>.09)this.schedule();else this.fillWindow();
  }
  setHidden(hidden:boolean){this.hidden=hidden;if(hidden)this.stop();else this.schedule();}
- recordingStream(){if(!this.context)throw Error('Enable audio before recording');this.capture??=this.context.createMediaStreamDestination();return this.capture.stream;}
- dispose(){this.disposed=true;this.revision++;this.stop();void this.context?.close();}
+ interactionOutput(){if(!this.context)return undefined;if(!this.interactionBus){this.interactionBus=this.context.createGain();this.interactionBus.connect(this.context.destination);if(this.capture)this.interactionBus.connect(this.capture);}return {context:this.context,node:this.interactionBus};}
+ recordingStream(){if(!this.context)throw Error('Enable audio before recording');if(!this.capture){this.capture=this.context.createMediaStreamDestination();this.interactionBus?.connect(this.capture);}return this.capture.stream;}
+ dispose(){this.disposed=true;this.revision++;this.stop();this.interactionBus?.disconnect();void this.context?.close();}
 }

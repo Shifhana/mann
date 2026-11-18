@@ -52,7 +52,7 @@
 }
 .postcard-art canvas { display: block; width: 100%; height: 100%; object-fit: cover; }
 .postcard-coordinates {
-  margin: 0; justify-self: center; text-align: center; color: #AEAEAE;
+  margin: 0; justify-self: center; text-align: center; color: #77716B;
   font: 400 calc(100cqw * 11 / 602)/calc(100cqw * 14 / 602) 'DM Mono', monospace;
   letter-spacing: 0; white-space: nowrap;
 }
@@ -66,5 +66,5 @@
   letter-spacing: .04em; text-transform: uppercase; white-space: nowrap;
 }
 .postcard-caption h2 { justify-self: start; text-align: left; color: #583622; }
-.postcard-caption .postcard-location { justify-self: end; text-align: right; color: #9F8F80; }
+.postcard-caption .postcard-location { justify-self: end; text-align: right; color: #807060; }
 @media (prefers-reduced-motion: reduce) { .postcard-dialog::backdrop { transition: none; } }
