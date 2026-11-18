@@ -2,6 +2,8 @@
 
 Architecture rooted in place.
 
+Live: [mann-shifhanas-projects.vercel.app](https://mann-shifhanas-projects.vercel.app/) · Repository: [Shifhana/mann](https://github.com/Shifhana/mann)
+
 An interactive, 1,911-piece architectural miniature of the Shore Temple at Mahabalipuram. The five-second build, coastal reveal, horizontal plan section, six visitors, tree/water interactions, Tamil heading, ticker and postcard preview/export are enabled at `/` in production. Sound is muted until the visitor enables it.
 
 ## Local checks
@@ -18,7 +20,7 @@ npm run preview
 
 `npm run build` includes TypeScript validation and generates `dist/`. Open the exact local URL printed by Vite. Desktop targets are 1366×768, 1440×900, 1536×864 and 1920×1080. WebGL2 and hardware acceleration are required. Mobile and other browsers require a separate QA pass.
 
-## Vercel settings (prepared; not deployed)
+## Production deployment
 
 - Framework: Vite; root directory: this repository.
 - Install: `npm ci`; build: `npm run build`; output: `dist`.
@@ -26,7 +28,7 @@ npm run preview
 - No backend, runtime secrets or additional packages are needed. `.vercelignore` excludes local review artifacts from uploads.
 - Optionally set build variable `SITE_URL` to the final HTTPS origin (for example, your chosen custom domain). Otherwise metadata uses `VERCEL_PROJECT_PRODUCTION_URL`, falling back to `VERCEL_URL`. This supplies absolute sharing-image/canonical URLs at build time. Preview sharing images use the preview deployment host so they do not depend on an unpublished production site. Local builds without these values use a root-relative sharing image and omit canonical/og:url rather than inventing a public domain.
 - `public/social-preview.png` is a 1200×630 capture of the approved interface and actual model. Retain the supplied favicon. Refresh the sharing artwork only when an approved appearance changes.
-- After deployment, check actual HTTPS URLs, asset caching and social-network unfurling. Those cannot be verified from a local preview.
+- Production on the existing Maṇṇ project was verified anonymously over HTTPS on 18 November 2026, including WebGL, interactions, audio, asset loading and PNG export. `mann.vercel.app` is assigned to another project; the live URL above is the verified available address.
 
 ## Behaviour and accessibility
 
