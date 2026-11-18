@@ -3,3 +3,9 @@ dist/
 .npm-cache/
 .qa/
 *.log
+
+# Local review artifacts and deployment project link
+.playwright-mcp/
+design-qa.md
+shore-temple-desktop-completed.png
+.vercel/

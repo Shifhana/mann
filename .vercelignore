@@ -1,0 +1,7 @@
+.qa/
+.playwright-mcp/
+node_modules/
+dist/
+design-qa.md
+shore-temple-desktop-completed.png
+*.log

@@ -2,12 +2,22 @@ import {
   ACESFilmicToneMapping, AmbientLight, CanvasTexture, Color, DirectionalLight, Group,
   HemisphereLight, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial,
   InstancedBufferAttribute, MeshDepthMaterial, RGBADepthPacking, Object3D, OrthographicCamera, PCFShadowMap, PlaneGeometry, PMREMGenerator, Scene,
-  ShadowMaterial, SRGBColorSpace, Vector3, WebGLRenderer,
+  ShadowMaterial, SRGBColorSpace, Vector2, Vector3, WebGLRenderer,
 } from 'three';
 import { BUILD_DURATION, createMotionPlan, remaining, turnAngle } from './animation.ts';
+import { BOUNCE_HEIGHT, LANDING_GLSL, PROTOTYPE_DURATION, landingOffset, prototypeAngle, type LandingMotion } from './landing-prototype.ts';
+import { planBatches } from './batching.ts';
+import { COAST_START_MS, COAST_REVEAL_MS, coastReveal, createCoastalLandscape } from './coastal-preview.ts';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { disposeGeometries, geometryKey, partGeometry } from './geometry.ts';
 import type { BrickRecord, MaterialRole, TempleDefinition } from './types.ts';
+import type { PlanViewFactory } from './plan-view.ts';
+import { postcardCamera } from './postcard-camera.ts';
+import { createPostcardScene } from './postcard-scene.ts';
+import { createTreeInteraction } from './tree-interaction.ts';
+import { planCutHeight } from './plan-timeline.ts';
+import { createSeaWaves } from './sea-waves.ts';
+import { createHumanFigures } from './human-figures.ts';
 
 export const PALETTE: Record<MaterialRole, string> = {
   sandstone: '#B98D60', honey: '#D4B184', toasted: '#99704C', brown: '#73513A',
@@ -16,12 +26,18 @@ export const PALETTE: Record<MaterialRole, string> = {
 export interface RenderedTemple {
   /** Root rotation is independent of every piece's immutable final transform. */
   root: Group;
+  camera: OrthographicCamera;
   instances: Map<string, { mesh: InstancedMesh; index: number; finalMatrix: Matrix4 }>;
   rebuild: () => void;
+  resetLandscape?: () => void;
+  resetPlanView?: () => void;
+  landscape?: Group;
+  capturePostcard: (scale?: number) => HTMLCanvasElement;
   dispose: () => void;
 }
 
-export function displayTemple(container: HTMLElement, definition: TempleDefinition): RenderedTemple {
+export function displayTemple(container: HTMLElement, definition: TempleDefinition, prototype?: LandingMotion[], previewDuration?:number, coastalRevealAt?: number, planFactory?: PlanViewFactory): RenderedTemple {
+  const duration = prototype ? previewDuration ?? PROTOTYPE_DURATION : BUILD_DURATION;
   const renderer = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setClearColor(0x000000, 0);
@@ -38,6 +54,10 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
   const root = new Group();
   root.name = 'shore-temple';
   scene.add(root);
+  const planView = planFactory?.(definition);
+  if (planView) root.add(planView.group);
+  const coast = coastalRevealAt !== undefined ? createCoastalLandscape() : undefined;
+  if (coast) scene.add(coast.group);
   const environment = new RoomEnvironment();
   const pmrem = new PMREMGenerator(renderer);
   const environmentMap = pmrem.fromScene(environment, .04);
@@ -50,12 +70,12 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     new MeshStandardMaterial({ color, roughness: .4, metalness: 0, envMapIntensity: .65 }),
   ])) as Record<MaterialRole, MeshStandardMaterial>;
 
-  const clock = { value: BUILD_DURATION };
+  const clock = { value: duration };
   const shaderMotion = (shader: { uniforms: Record<string, unknown>; vertexShader: string; fragmentShader: string }) => {
     shader.uniforms.buildTime = clock;
-    shader.vertexShader = 'attribute vec4 buildMotion; attribute float buildDrop; uniform float buildTime; varying float buildOpacity;\n' + shader.vertexShader;
+    shader.vertexShader = 'attribute vec4 buildMotion; attribute float buildDrop; attribute float buildBounce; attribute float buildEntry; attribute float buildDamping; uniform float buildTime; varying float buildOpacity;\n' + shader.vertexShader;
     shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',
-      `#include <begin_vertex>
+      prototype ? '#include <begin_vertex>\n'+LANDING_GLSL+'\nif(buildOpacity<=0.0) transformed=vec3(0.0,10000.0,0.0);' : `#include <begin_vertex>
       float progress=clamp((buildTime-buildMotion.x)/buildMotion.y,0.0,1.0);
       float seat=.055/buildDrop;
       float u=clamp(progress/.94,0.0,1.0);
@@ -68,29 +88,38 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
       `#include <clipping_planes_fragment>
       float grain=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));
       if(buildOpacity<=grain) discard;`);
+    planView?.patchShader(shader);
   };
+  // The four stone materials share every property except their linear colour.
+  // Instance colours allow equal part geometries to share a draw submission.
+  const stoneMaterial=materials.sandstone.clone();stoneMaterial.color.set(0xffffff);
+  stoneMaterial.onBeforeCompile=shaderMotion;
   Object.values(materials).forEach(m => { m.onBeforeCompile = shaderMotion; });
   const depthMaterial = new MeshDepthMaterial({ depthPacking: RGBADepthPacking });
   depthMaterial.onBeforeCompile = shaderMotion;
-  const motions = createMotionPlan(definition.pieces);
-  container.dataset.fallingEvents=String(new Set(motions).size);
+  const sample = new Map(prototype?.map(m=>[m.pieceId,m]));
+  const motions = prototype ? definition.pieces.map(p=>sample.get(p.id)??{delay:-1,duration:1,x:0,z:0,drop:0}) : createMotionPlan(definition.pieces);
+  container.dataset.fallingEvents=String(prototype?.length ?? new Set(motions).size);
   const motionById = new Map(definition.pieces.map((p,i)=>[p.id,motions[i]]));
   const instances: RenderedTemple['instances'] = new Map();
-  const batches = new Map<string, BrickRecord[]>();
-  for (const p of definition.pieces) {
-    const key = `${geometryKey(p)}:${p.material}`;
-    const batch = batches.get(key) ?? [];
-    batch.push(p); batches.set(key, batch);
-  }
+  const plan=prototype?planBatches(definition.pieces):null;
+  const batches=plan?.batches??new Map<string,BrickRecord[]>();
+  if(!plan)for(const p of definition.pieces){const key=`${geometryKey(p)}:${p.material}`,batch=batches.get(key)??[];batch.push(p);batches.set(key,batch);}
   const object = new Object3D();
   for (const [key, pieces] of batches) {
-    const mesh = new InstancedMesh(partGeometry(pieces[0]).clone(), materials[pieces[0].material], pieces.length);
+    const mesh = new InstancedMesh(partGeometry(pieces[0]).clone(), prototype ? stoneMaterial : materials[pieces[0].material], pieces.length);
     mesh.name = key;
-    const motionData = new Float32Array(pieces.length * 4), dropData = new Float32Array(pieces.length);
-    pieces.forEach((p, i) => { const m = motionById.get(p.id)!; motionData.set([m.delay,m.duration,m.x,m.z], i*4); dropData[i]=m.drop; });
+    if(plan)mesh.renderOrder=plan.order.get(key)!;
+    const motionData = new Float32Array(pieces.length * 4), dropData = new Float32Array(pieces.length), bounceData=new Float32Array(pieces.length), entryData=new Float32Array(pieces.length), dampingData=new Float32Array(pieces.length);
+    pieces.forEach((p, i) => { const m = motionById.get(p.id)!; motionData.set([m.delay,m.duration,prototype ? ('contact' in m ? (m as LandingMotion).contact-m.delay : 1) : m.x,prototype ? ('contact' in m ? (m as LandingMotion).settled-(m as LandingMotion).contact : 1) : m.z], i*4); dropData[i]=m.drop; bounceData[i]=(m as LandingMotion).bounceHeight??BOUNCE_HEIGHT; entryData[i]=(m as LandingMotion).entryFadeMs??0; dampingData[i]=(m as LandingMotion).bounceDamping??0; });
     mesh.geometry.setAttribute('buildMotion', new InstancedBufferAttribute(motionData, 4));
+    mesh.geometry.setAttribute('buildDamping',new InstancedBufferAttribute(dampingData,1));
+    mesh.geometry.setAttribute('buildEntry',new InstancedBufferAttribute(entryData,1));
+    mesh.geometry.setAttribute('buildBounce',new InstancedBufferAttribute(bounceData,1));
     mesh.geometry.setAttribute('buildDrop', new InstancedBufferAttribute(dropData, 1));
-    // Bounds move in the shader; CPU camera fitting includes their full trajectories.
+    if (planView) mesh.geometry.setAttribute('planEligible', new InstancedBufferAttribute(new Float32Array(pieces.map(p => planView.eligible(p) ? 1 : 0)), 1));
+    if (planView) mesh.geometry.setAttribute('planDetailTop', new InstancedBufferAttribute(new Float32Array(pieces.map(p => planView.detailTop(p))), 1));
+    // Shader displacement can enter from beyond the fixed camera's upper edge.
     mesh.frustumCulled = false;
     mesh.customDepthMaterial = depthMaterial;
     mesh.castShadow = true;
@@ -101,6 +130,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
       object.rotation.set(0, p.rotationY, 0);
       object.updateMatrix();
       mesh.setMatrixAt(index, object.matrix);
+      if(prototype)mesh.setColorAt(index,materials[p.material].color);
       instances.set(p.id, { mesh, index, finalMatrix: object.matrix.clone() });
     });
     mesh.instanceMatrix.needsUpdate = true;
@@ -108,25 +138,29 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     root.add(mesh);
   }
 
-  const keyLight = new DirectionalLight('#fff7ed', 2.5);
-  keyLight.position.set(-35, 75, 45);
+  // One fixed coastal sun: front-left in the approved hero composition.
+  const keyLight = new DirectionalLight('#fff5e6', 3);
+  keyLight.position.set(-50, 68, 52);
   keyLight.target.position.set(0, 5, 0);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(2048, 2048);
-  keyLight.shadow.camera.left = -65; keyLight.shadow.camera.right = 65;
-  keyLight.shadow.camera.top = 65; keyLight.shadow.camera.bottom = -65;
+  keyLight.shadow.camera.left = -58; keyLight.shadow.camera.right = 58;
+  keyLight.shadow.camera.top = 58; keyLight.shadow.camera.bottom = -58;
   keyLight.shadow.camera.near = 1; keyLight.shadow.camera.far = 180;
-  keyLight.shadow.bias = -.0003;
-  keyLight.shadow.normalBias = .04;
-  keyLight.shadow.radius = 12;
+  keyLight.shadow.bias = -.00015;
+  keyLight.shadow.normalBias = .025;
+  keyLight.shadow.radius = 2.5;
+  keyLight.shadow.intensity = .78;
   scene.add(keyLight, keyLight.target);
-  scene.add(new HemisphereLight('#f8f4ee', '#b6a394', .7));
+  scene.add(new HemisphereLight('#f8f4ee', '#b6a394', .65));
   scene.add(new AmbientLight('#fff5e8', .12));
-  const fill = new DirectionalLight('#edf1fa', .5);
+  const fill = new DirectionalLight('#edf1fa', .25);
   fill.position.set(45, 25, -30); scene.add(fill);
 
   const groundGeometry = new PlaneGeometry(300, 300);
   const groundMaterial = new ShadowMaterial({ color: new Color('#6c523c'), opacity: .16 });
+  // The studio shadow catcher must not occlude the preview's shallow sand/water edges.
+  if (coast) groundMaterial.depthWrite = false;
   const ground = new Mesh(groundGeometry, groundMaterial);
   ground.rotation.x = -Math.PI / 2; ground.position.y = -.07;
   ground.receiveShadow = true; scene.add(ground);
@@ -163,21 +197,16 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     camera.lookAt(target); camera.updateMatrixWorld();
 
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    const a = root.rotation.y, ca = Math.cos(a), sa = Math.sin(a);
     const view = camera.matrixWorldInverse.elements;
     definition.pieces.forEach((p, i) => {
-      const m = motions[i], r = remaining(m, clock.value);
       const f=framing[i],c=f.c,sn=f.s;
-      const x = p.position[0] + (c*m.x + sn*m.z)*r;
-      const z = p.position[2] + (-sn*m.x + c*m.z)*r;
-      point.set(ca*x+sa*z, p.position[1]+m.drop*r, -sa*x+ca*z).applyMatrix4(camera.matrixWorldInverse);
-      const co=c*ca-sn*sa,si=sn*ca+c*sa;
+      // Always fit the completed model at its approved hero orientation.
+      // Falling pieces and root rotation must never change camera framing.
+      point.fromArray(p.position).applyMatrix4(camera.matrixWorldInverse);
+      const co=c,si=sn;
       const {hw,hh,hd}=f;
       const ex=Math.abs(view[0]*co-view[8]*si)*hw+Math.abs(view[4])*hh+Math.abs(view[0]*si+view[8]*co)*hd;
       const ey=Math.abs(view[1]*co-view[9]*si)*hw+Math.abs(view[5])*hh+Math.abs(view[1]*si+view[9]*co)*hd;
-      minX=Math.min(minX,point.x-ex); maxX=Math.max(maxX,point.x+ex);
-      minY=Math.min(minY,point.y-ey); maxY=Math.max(maxY,point.y+ey);
-      point.set(ca*p.position[0]+sa*p.position[2],p.position[1],-sa*p.position[0]+ca*p.position[2]).applyMatrix4(camera.matrixWorldInverse);
       minX=Math.min(minX,point.x-ex); maxX=Math.max(maxX,point.x+ex);
       minY=Math.min(minY,point.y-ey); maxY=Math.max(maxY,point.y+ey);
     });
@@ -185,60 +214,133 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     up.setFromMatrixColumn(camera.matrixWorld, 1);
     const offset = right.multiplyScalar((minX + maxX) / 2).add(up.multiplyScalar((minY + maxY) / 2));
     camera.position.add(offset); target.add(offset); camera.lookAt(target);
-    const aspect = width / height;
+    // Fit the approved composition, then render extra ground below it. Extending
+    // only the lower frustum keeps every existing world point at the same pixel
+    // position while the canvas covers the short desktop frame all the way down.
+    // This is resize-only; construction, rotation and the shared clock are intact.
+    const compositionHeight = container.closest('.exhibit')!.getBoundingClientRect().height / .8 - 112;
+    const aspect = width / compositionHeight;
     let vertical = Math.max((maxY - minY) * 1.13, (maxX - minX) / aspect * 1.11);
+    // Keep the hero angle and centre, with the temple 20% smaller on screen.
+    // This static projection is shared by the entire build and completed hold.
+    vertical *= 1.25;
     if (qaView === 'closeup') vertical *= .57;
     camera.left = -vertical * aspect / 2; camera.right = vertical * aspect / 2;
-    camera.top = vertical / 2; camera.bottom = -vertical / 2;
+    camera.top = vertical / 2;
+    camera.bottom = -vertical / 2 - Math.max(0, height - compositionHeight) * vertical / compositionHeight;
     camera.updateProjectionMatrix();
+    planView?.fitInteraction(camera, width, height);
   }
 
-  let disposed = false, scheduledFrame = 0, fallbackFrame = 0, renderCount = 0;
+  const piecesById=new Map(definition.pieces.map(p=>[p.id,p]));
+  const treeInteraction=coast ? createTreeInteraction(coast.trees,camera,[...instances].map(([id,i])=>({id,mesh:i.mesh,index:i.index})),(id,y)=>{
+    if(!planView||planView.timeline.progress===0)return true;
+    const p=piecesById.get(id)!,height=planCutHeight(planView.timeline.progress);
+    return planView.detailTop(p)<=height&&(!planView.eligible(p)||y<=height);
+  },planView?.group) : undefined;
+  const seaWaves=coast ? createSeaWaves(coast.surface,camera,()=>[
+    ...root.children.filter(o=>o instanceof InstancedMesh),
+    ...coast.trees.flatMap(t=>t.parts).filter(m=>m.visible),
+    ...(planView?.group.visible?planView.group.children:[]),
+  ],hit=>{
+    if(!(hit.object instanceof InstancedMesh)||!planView||planView.timeline.progress===0)return true;
+    const id=hit.object.userData.pieceIds[hit.instanceId!] as string,p=piecesById.get(id)!,height=planCutHeight(planView.timeline.progress);
+    return planView.detailTop(p)<=height&&(!planView.eligible(p)||hit.point.y<=height);
+  }) : undefined;
+  const humans=createHumanFigures(definition);scene.add(humans.group);
+  let humanAnimating=false,humanWake=0;
+  const clearHumans=()=>{clearTimeout(humanWake);humanWake=0;humanAnimating=false;humans.reset();};
+  let seaHover=false, audiblePlan=0;
+  const environmentHover=()=>container.dispatchEvent(new CustomEvent('environmenthover',{detail:treeHover>=0?'tree':seaHover?'sea':'none'}));
+  let seaAnimating=false;
+  const clearSeaWaves=()=>{seaWaves?.reset();seaAnimating=false;seaHover=false;environmentHover();};
+  let treeHover=-1,treeAnimating=false;
+  const clearTrees=()=>{treeInteraction?.reset();treeHover=-1;treeAnimating=false;renderer.domElement.style.cursor='';environmentHover();};
+  let disposed = false, scheduledFrame = 0, renderCount = 0, shadowStatic=false;
   let viewportWidth = 0, viewportHeight = 0;
   let running = false, started = 0, deadline = 0, warming = true, openingFrame = false;
+  let coastStarted: number | undefined, coastAllowed = false, coastAnimating = false;
   let frameCount=0,frameTotal=0,maxFrame=0,lastFrame=0;
+  let pointerOnCanvas = false, pointerX = 0, pointerY = 0, hoverInside = false, keyboardFocus = false;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const rebuild = () => {
     if (disposed || warming) return;
+    clearTrees();
+    clearSeaWaves();
+    clearHumans();
+    planView?.reset();audiblePlan=0;
+    pointerOnCanvas = hoverInside = keyboardFocus = false;
+    if (coast) { coastStarted = undefined; coastAllowed = true; coast.setReveal(0); }
     clearTimeout(deadline);
     started = performance.now(); lastFrame = started; frameCount=0;frameTotal=0;maxFrame=0;
     openingFrame=true;
-    running = !reduced.matches; clock.value = running ? 0 : BUILD_DURATION;
+    running = !reduced.matches; clock.value = running ? 0 : duration;
     container.dataset.state = running ? 'building' : 'complete';
     container.dispatchEvent(new CustomEvent('buildstate', { detail: running }));
-    if (running) deadline = window.setTimeout(() => {
-      cancelAnimationFrame(scheduledFrame); scheduledFrame=0; render();
-    }, BUILD_DURATION);
+    if (running) deadline = window.setTimeout(requestRender, duration);
     cancelAnimationFrame(scheduledFrame); scheduledFrame=0; render();
   };
-  const render = () => {
-    scheduledFrame = 0; clearTimeout(fallbackFrame); fallbackFrame=0;
+  const render = (frameTime?: number) => {
+    scheduledFrame = 0;
     if (disposed || warming) return;
     const { width, height } = container.getBoundingClientRect();
     if (width < 1 || height < 1) return;
-    const now = performance.now();
+    // One display clock drives physics, rotation, scenery, border and audio.
+    // Timers must never cancel or race a pending presentation. rAF's timestamp
+    // also avoids turning callback scheduling jitter into uneven motion steps.
+    const now = frameTime ?? performance.now();
     if (running) {
       const delta=now-lastFrame; if(delta>0){frameCount++;frameTotal+=delta;maxFrame=Math.max(maxFrame,delta);} lastFrame=now;
-      clock.value = reduced.matches ? BUILD_DURATION : openingFrame ? 0 : Math.min(BUILD_DURATION, now-started);
+      clock.value = reduced.matches ? duration : openingFrame ? 0 : Math.min(duration, now-started);
       openingFrame=false;
-      if (clock.value >= BUILD_DURATION) {
+      if (clock.value >= duration) {
         running=false; clearTimeout(deadline);
         container.dataset.state='complete';
         container.dataset.durationMs=String(now-started);
         container.dataset.maxFrameMs=String(maxFrame);
         container.dataset.averageFps=String(Math.round(1000*frameCount/frameTotal));
-        container.dataset.finalOffset=String(Math.max(...motions.map(m=>remaining(m,clock.value)*m.drop))); 
+        container.dataset.finalOffset=String(prototype ? Math.max(...prototype.map(m=>landingOffset(m,clock.value))) : Math.max(...motions.map(m=>remaining(m,clock.value)*m.drop)));
         container.dispatchEvent(new CustomEvent('buildstate', {detail:false}));
       }
     }
-    root.rotation.y = turnAngle(clock.value);
+    if (!running && (coastAnimating || planView?.animating)) lastFrame = now;
+    root.rotation.y = prototype ? prototypeAngle(clock.value,duration) : turnAngle(clock.value);
+    if (coast) {
+      // Scenery emerges on a separate clock while the unchanged build continues.
+      if (coastAllowed && clock.value >= COAST_START_MS) coastStarted ??= started + COAST_START_MS;
+      const elapsed = coastStarted === undefined ? 0 : now - coastStarted;
+      const reveal = reduced.matches && coastAllowed ? 1 : coastReveal(elapsed);
+      coast.setReveal(reveal);
+      coastAnimating = coastStarted !== undefined && !reduced.matches && elapsed < COAST_REVEAL_MS;
+      container.dataset.landscape = reveal === 1 ? 'complete' : reveal > 0 ? 'revealing' : 'hidden';
+      container.dataset.landscapeReveal = String(reveal);
+    }
+    if (planView) {
+      syncPlanInput(now);
+      planView.update(now);
+      if(readyForPlan()&&!planView.animating&&planView.timeline.progress!==audiblePlan){audiblePlan=planView.timeline.progress;container.dispatchEvent(new CustomEvent('planstate',{detail:audiblePlan===1}));}
+      coast?.setPlanEmphasis(planView.emphasis);
+      container.dataset.viewMode = planView.animating ? planView.timeline.target === 1 ? 'cutting' : 'restoring' : planView.timeline.progress === 1 ? 'plan' : 'exterior';
+      container.dataset.planProgress = String(planView.timeline.progress);
+      renderer.domElement.setAttribute('aria-pressed', String(planView.timeline.target === 1));
+      renderer.domElement.setAttribute('aria-disabled', String(!readyForPlan()));
+      renderer.domElement.setAttribute('aria-label', 'Shore Temple. Hover or focus to reveal its architectural plan; leave or move focus away to restore the exterior.');
+    }
+    treeAnimating=!!treeInteraction&&readyForPlan()&&treeInteraction.update(now);
+    seaAnimating=!!seaWaves&&readyForPlan()&&seaWaves.update(now);
+    clearTimeout(humanWake);humanWake=0;
+    const humanFrame=humans.update(now,readyForPlan(),reduced.matches,planView?.timeline.progress??0);humanAnimating=humanFrame.active;
     if (width !== viewportWidth || height !== viewportHeight) {
       renderer.setSize(width, height, false); viewportWidth=width; viewportHeight=height;
+      fitCamera(width, height);
     }
     const cpuStart = performance.now();
-    fitCamera(width, height);
-    renderer.shadowMap.needsUpdate = true;
+    // Water and the figures' planar contact shadows do not cast. During their motion the cached
+    // sun map is identical; keep the original policy for every other redraw.
+    const staticScene=!running&&!coastAnimating&&!planView?.animating&&!treeAnimating;
+    renderer.shadowMap.needsUpdate = !((seaAnimating||humanAnimating)&&staticScene&&shadowStatic);
     renderer.render(scene, camera);
+    shadowStatic=staticScene;
     container.dataset.cpuFrameMs=String(performance.now()-cpuStart);
     container.dataset.visibility=document.visibilityState;
     container.dataset.ready = 'true';
@@ -248,28 +350,100 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     container.dataset.drawCalls = String(renderer.info.render.calls);
     container.closest('figure')?.setAttribute('aria-busy', 'false');
     container.dispatchEvent(new Event('templeframe'));
-    if (running) requestRender();
+    container.dispatchEvent(new CustomEvent('buildprogress', {detail:{elapsed:clock.value,building:running,timelineSampleTime:now,renderedAt:performance.now()}}));
+    if (running || coastAnimating || planView?.animating || treeAnimating || seaAnimating || humanAnimating) requestRender();
+    else if(humanFrame.wakeAt!==undefined)humanWake=window.setTimeout(()=>{humanWake=0;requestRender();},Math.max(0,humanFrame.wakeAt-now));
   };
   const requestRender = () => {
     if (scheduledFrame || disposed) return;
     scheduledFrame = requestAnimationFrame(render);
-    // Some embedded/occluded surfaces throttle rAF even while reporting visible.
-    // Keep the wall-clock build moving; prefer native rAF whenever it arrives first.
-    if (running && !document.hidden) fallbackFrame=window.setTimeout(() => {
-      cancelAnimationFrame(scheduledFrame); scheduledFrame=0; render();
-    }, 1000/60);
   };
+  const readyForPlan = () => !warming && !running && container.dataset.state === 'complete' && (!coast || container.dataset.landscape === 'complete');
+  const syncPlanInput = (now: number) => {
+    if (!planView) return false;
+    hoverInside = treeHover<0 && pointerOnCanvas && planView.containsPointer(pointerX, pointerY, hoverInside);
+    return planView.setRevealed(readyForPlan() && (hoverInside || keyboardFocus), now, reduced.matches);
+  };
+  const updatePlanInput = () => { if (syncPlanInput(performance.now())) requestRender(); };
+  const onPlanPointer = (event: PointerEvent) => {
+    if (event.pointerType === 'touch') return;
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointerOnCanvas = true; pointerX = event.clientX - rect.left; pointerY = event.clientY - rect.top;
+    updatePlanInput();
+  };
+  const onPlanLeave = () => { pointerOnCanvas = hoverInside = false; updatePlanInput(); };
+  const pickTree=(event:PointerEvent|MouseEvent)=>{
+    if(!treeInteraction||!readyForPlan())return -1;
+    const rect=renderer.domElement.getBoundingClientRect();
+    return treeInteraction.hit(event.clientX-rect.left,event.clientY-rect.top,rect.width,rect.height);
+  };
+  const onTreePointer=(event:PointerEvent)=>{
+    if(event.pointerType==='touch')return;
+    treeHover=pickTree(event);environmentHover();renderer.domElement.style.cursor=treeHover>=0?'pointer':'';
+    if(treeInteraction?.hover(treeHover,performance.now(),reduced.matches))requestRender();
+    updatePlanInput();
+  };
+  const onTreeLeave=()=>{treeHover=-1;environmentHover();renderer.domElement.style.cursor='';if(treeInteraction?.hover(-1,performance.now(),reduced.matches))requestRender();};
+  const onTreeClick=(event:MouseEvent)=>{const hit=pickTree(event);if(treeInteraction?.nudge(hit,performance.now(),reduced.matches))requestRender();};
+  const onSeaPointer=(event:PointerEvent)=>{
+    if(event.pointerType==='touch'||!seaWaves)return;
+    const rect=renderer.domElement.getBoundingClientRect();
+    const overSea=readyForPlan()&&seaWaves.hit(event.clientX-rect.left,event.clientY-rect.top,rect.width,rect.height);
+    seaHover=overSea;environmentHover();
+    if(seaWaves.hover(overSea,performance.now(),reduced.matches))requestRender();
+  };
+  const onSeaLeave=()=>{seaHover=false;environmentHover();if(seaWaves?.hover(false,performance.now(),reduced.matches))requestRender();};
+  const onPlanFocus = () => { keyboardFocus = renderer.domElement.matches(':focus-visible'); updatePlanInput(); };
+  const onPlanBlur = () => { keyboardFocus = false; updatePlanInput(); };
+  const onPlanKey = (event: KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); keyboardFocus = true; updatePlanInput(); }
+    if (event.key === 'Escape') { renderer.domElement.blur(); }
+  };
+  if(seaWaves){
+    renderer.domElement.addEventListener('pointerenter',onSeaPointer);
+    renderer.domElement.addEventListener('pointermove',onSeaPointer);
+    renderer.domElement.addEventListener('pointerleave',onSeaLeave);
+    renderer.domElement.addEventListener('pointercancel',onSeaLeave);
+  }
+  if(treeInteraction){
+    renderer.domElement.addEventListener('pointermove',onTreePointer);
+    renderer.domElement.addEventListener('pointerleave',onTreeLeave);
+    renderer.domElement.addEventListener('pointercancel',onTreeLeave);
+    renderer.domElement.addEventListener('click',onTreeClick);
+  }
+  if (planView) {
+    renderer.domElement.removeAttribute('aria-hidden');
+    renderer.domElement.tabIndex = 0;
+    renderer.domElement.setAttribute('role', 'button');
+    renderer.domElement.addEventListener('pointerenter', onPlanPointer);
+    renderer.domElement.addEventListener('pointermove', onPlanPointer);
+    renderer.domElement.addEventListener('pointerleave', onPlanLeave);
+    renderer.domElement.addEventListener('pointercancel', onPlanLeave);
+    renderer.domElement.addEventListener('focus', onPlanFocus);
+    renderer.domElement.addEventListener('blur', onPlanBlur);
+    renderer.domElement.addEventListener('keydown', onPlanKey);
+  }
   const observer = new ResizeObserver(requestRender);
   observer.observe(container);
   renderer.domElement.addEventListener('webglcontextlost', event => {
     event.preventDefault();
     container.dataset.ready = 'false';
+    shadowStatic=false;
   });
   renderer.domElement.addEventListener('webglcontextrestored', requestRender);
-  const onReduced = () => { if (running && reduced.matches) { clock.value=BUILD_DURATION; started=performance.now()-BUILD_DURATION; requestRender(); } };
+  const onReduced = () => {
+    clearTimeout(humanWake);humanWake=0;requestRender();
+    if(reduced.matches&&seaWaves){clearSeaWaves();requestRender();}
+    if(reduced.matches&&treeInteraction){clearTrees();requestRender();}
+    if (running && reduced.matches) { clock.value=duration; started=performance.now()-duration; requestRender(); }
+    if (planView?.animating && reduced.matches) { planView.timeline.finish(); requestRender(); }
+  };
   reduced.addEventListener('change', onReduced);
-  const onVisible = () => { if (!document.hidden && running) requestRender(); };
+  const onVisible = () => { humans.setHidden(document.hidden,performance.now());if(document.hidden){clearTimeout(humanWake);humanWake=0;}if (!document.hidden) requestRender(); };
   document.addEventListener('visibilitychange', onVisible);
+  humans.setHidden(document.hidden,performance.now());
+  planView?.prepareWarmup();
+  humans.prepareWarmup();
   renderer.compileAsync(scene, camera).then(() => {
     if(disposed)return;
     // Warm the actual screen/depth programs, not an offscreen colour-space variant.
@@ -278,30 +452,81 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     const bounds=container.getBoundingClientRect();
     viewportWidth=Math.max(1,bounds.width);viewportHeight=Math.max(1,bounds.height);
     renderer.setSize(viewportWidth,viewportHeight,false);
-    fitCamera(viewportWidth,viewportHeight);renderer.shadowMap.needsUpdate=true;
+    fitCamera(viewportWidth,viewportHeight);humans.prepareVisibility(camera,root.children.filter((o):o is InstancedMesh=>o instanceof InstancedMesh));renderer.shadowMap.needsUpdate=true;
     renderer.render(scene,camera);renderer.getContext().finish();renderer.clear();
+    planView?.reset();seaWaves?.reset();humans.reset();
     warming=false;
     if(qaView){render();renderer.domElement.style.visibility='';}
     else {
       // Present the empty canvas once before starting the clock: first-presentation
       // compositor work must not consume a chunk of the visible construction.
-      clock.value=reduced.matches?BUILD_DURATION:0;render();
+      clock.value=reduced.matches?duration:0;render();
       renderer.domElement.style.visibility='';
       scheduledFrame=requestAnimationFrame(()=>{scheduledFrame=0;if(!disposed)rebuild();});
     }
   });
 
   return {
-    root, instances, rebuild,
+    root, camera, instances, rebuild,
+    capturePostcard(scale = 1) {
+      if (disposed || warming || running || (coast && container.dataset.landscape !== 'complete')) throw new Error('The miniature is still assembling.');
+      if (!Number.isFinite(scale) || scale < 1 || scale > 2) throw new RangeError('Invalid postcard capture scale.');
+      // Render a detached, completed exterior. The live model, plan uniforms,
+      // landscape, camera and animation clock are never changed for a capture.
+      const size=renderer.getSize(new Vector2()),ratio=renderer.getPixelRatio();
+      const previewCamera=postcardCamera(camera,definition.pieces,1662/1230);
+      const snapshot=createPostcardScene(scene,new Set([coast?.group,planView?.group,humans.group].filter((object): object is NonNullable<typeof object> => !!object)));
+      const output=document.createElement('canvas');output.width=Math.round(1662*scale);output.height=Math.round(1230*scale);
+      try {
+        const context=output.getContext('2d');
+        if(!context)throw new Error('Unable to create the postcard image.');
+        renderer.setPixelRatio(1);renderer.setSize(output.width,output.height,false);
+        renderer.shadowMap.needsUpdate=true;renderer.render(snapshot.scene,previewCamera);
+        context.drawImage(renderer.domElement,0,0);
+      }
+      finally {
+        snapshot.dispose();
+        // Restore the drawing buffer synchronously, before the next browser
+        // presentation. Reuse the existing context and create no render loop.
+        renderer.setPixelRatio(ratio);renderer.setSize(size.x,size.y,false);
+        renderer.shadowMap.needsUpdate=true;renderer.render(scene,camera);
+      }
+      return output;
+    },
+    ...(planView ? { resetPlanView() { pointerOnCanvas = hoverInside = keyboardFocus = false; audiblePlan=0; planView.reset(); requestRender(); } } : {}),
+    ...(coast ? { landscape:coast.group, resetLandscape() {
+      clearTrees();
+      clearSeaWaves();
+      clearHumans();
+      coastAllowed = false; coastStarted = undefined; coastAnimating = false;
+      coast.setReveal(0); requestRender();
+    } } : {}),
     dispose() {
-      disposed = true; clearTimeout(deadline); clearTimeout(fallbackFrame); reduced.removeEventListener('change', onReduced); document.removeEventListener('visibilitychange', onVisible); cancelAnimationFrame(scheduledFrame); observer.disconnect();
+      disposed = true; clearTimeout(humanWake);humans.dispose();clearTimeout(deadline); reduced.removeEventListener('change', onReduced); document.removeEventListener('visibilitychange', onVisible); cancelAnimationFrame(scheduledFrame); observer.disconnect();
       root.traverse(o => { if (o instanceof InstancedMesh) { o.geometry.dispose(); o.dispose(); } });
-      Object.values(materials).forEach(m => m.dispose());
+      Object.values(materials).forEach(m => m.dispose());stoneMaterial.dispose();
       depthMaterial.dispose(); disposeGeometries();
+      planView?.dispose();
+      renderer.domElement.removeEventListener('pointerenter', onPlanPointer);
+      renderer.domElement.removeEventListener('pointermove', onPlanPointer);
+      renderer.domElement.removeEventListener('pointerleave', onPlanLeave);
+      renderer.domElement.removeEventListener('pointercancel', onPlanLeave);
+      renderer.domElement.removeEventListener('focus', onPlanFocus);
+      renderer.domElement.removeEventListener('blur', onPlanBlur);
+      renderer.domElement.removeEventListener('keydown', onPlanKey);
+      coast?.dispose();
+      seaWaves?.dispose();
+      renderer.domElement.removeEventListener('pointerenter',onSeaPointer);
+      renderer.domElement.removeEventListener('pointermove',onSeaPointer);
+      renderer.domElement.removeEventListener('pointerleave',onSeaLeave);
+      renderer.domElement.removeEventListener('pointercancel',onSeaLeave);
+      renderer.domElement.removeEventListener('pointermove',onTreePointer);
+      renderer.domElement.removeEventListener('pointerleave',onTreeLeave);
+      renderer.domElement.removeEventListener('pointercancel',onTreeLeave);
+      renderer.domElement.removeEventListener('click',onTreeClick);
       environmentMap.dispose(); groundGeometry.dispose(); groundMaterial.dispose();
       contactGeometry.dispose(); contactMaterial.dispose(); shadowTexture.dispose();
       renderer.dispose(); renderer.domElement.remove();
     },
   };
 }
-
