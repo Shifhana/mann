@@ -58,5 +58,5 @@ export async function postcardPng(capture: () => HTMLCanvasElement, building: Bu
 
 export function postcardFilename(building: Building) {
   const name = building.name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'building';
-  return `brickit-${name}-postcard.png`;
+  return `mann-${name}-postcard.png`;
 }

@@ -1,4 +1,6 @@
-# Brickit — Shore Temple
+# Maṇṇ (மண்)
+
+Architecture rooted in place.
 
 An interactive, 1,911-piece architectural miniature of the Shore Temple at Mahabalipuram. The five-second build, coastal reveal, horizontal plan section, six visitors, tree/water interactions, Tamil heading, ticker and postcard preview/export are enabled at `/` in production. Sound is muted until the visitor enables it.
 
@@ -38,6 +40,6 @@ The postcard is 602:490, exports to 3000×2442 PNG and always captures the finis
 
 This is a stylised, reference-derived miniature, not a surveyed reconstruction or a physically buildable instruction set. Shrine connections follow the existing model; no invented rooms or passages are added. See `docs/PLAN-VIEW.md` and `docs/COASTAL-PREVIEW.md` for historical implementation notes (their development-only status is superseded by this release).
 
-Fonts are bundled locally with their Open Font Licences. Recorded construction contacts are CC0; provenance is in `public/audio/landing-prototype/LICENSE.md`. Environmental textures and plan clicks are original procedural synthesis. No external audio service, tracking or music is used. Brickit is an independent project; LEGO is a trademark of the LEGO Group, which does not sponsor or endorse this project.
+Fonts are bundled locally with their Open Font Licences. Recorded construction contacts are CC0; provenance is in `public/audio/landing-prototype/LICENSE.md`. Environmental textures and plan clicks are original procedural synthesis. No external audio service, tracking or music is used. Maṇṇ (மண்) is an independent project; LEGO is a trademark of the LEGO Group, which does not sponsor or endorse this project.
 
 Development-only comparison modes, diagnostics and the local `/__recording` middleware are not exposed by the production application. QA assets stay under ignored `.qa/`; they are not part of `dist/`.

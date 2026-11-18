@@ -19,7 +19,7 @@ test('PNG preserves the approved 602×490 composition at 3000×2442 without side
   assert.deepEqual(text.map(c=>[c[2],c[5],c[6],c[7]]),[['#583622','ANOTHER HALL',20,455],['#77716B','33°51′24″S 151°12′55″E',301,455],['#807060','SYDNEY',582,455]]);
   assert.deepEqual(text.map(c=>c[1]),["500 12px 'DM Mono', monospace","400 11px 'DM Mono', monospace","500 12px 'DM Mono', monospace"]);
   assert.throws(()=>paintPostcard({getContext:()=>null},image,{}),/Unable to create/);
-  assert.equal(postcardFilename({name:'São / Hall?'}),'brickit-sao-hall-postcard.png');
+  assert.equal(postcardFilename({name:'São / Hall?'}),'mann-sao-hall-postcard.png');
 });
 
 test('detached exterior has no plan/build shader or live scene mutations and releases only its own resources',()=>{

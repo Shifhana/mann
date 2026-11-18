@@ -61,7 +61,7 @@ test('PNG export guards concurrent clicks, uses high-resolution capture and dyna
   download.click();download.click();assert.equal(download.disabled,true);await flush();
   assert.equal(f.captures.length,2);assert.equal(f.captures[1].captureScale,2);assert.equal(f.encodings.length,1);
   f.encodings.shift()(new Blob(['png'],{type:'image/png'}));await flush();
-  assert.equal(download.disabled,false);assert.equal(f.downloads.length,1);assert.equal(f.downloads[0].name,'brickit-another-hall-postcard.png');
+  assert.equal(download.disabled,false);assert.equal(f.downloads.length,1);assert.equal(f.downloads[0].name,'mann-another-hall-postcard.png');
   assert.equal(f.captures[1].width,0);assert.equal(f.captures[0].width,16,'preview canvas must remain intact');
   download.click();await flush();assert.equal(f.downloads.length,2);assert.equal(f.captures.length,2,'reuse the PNG on a repeated download');
   f.preview.reset();await flush();openReady(f);download.click();await flush();assert.equal(f.captures.length,4,'Rebuild invalidates both preview and PNG');

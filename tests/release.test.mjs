@@ -23,9 +23,9 @@ test('preview sharing artwork uses the preview host while canonical metadata ret
  const {config}=await loadConfigFromFile({command:'build',mode:'production'});
  const transform=config.plugins.find(p=>p.name==='release-metadata').transformIndexHtml;
  const keys=['SITE_URL','VERCEL_ENV','VERCEL_URL'],saved=keys.map(k=>process.env[k]);
- try{process.env.SITE_URL='https://brickit.example';process.env.VERCEL_ENV='preview';process.env.VERCEL_URL='brickit-review.example';
-  const preview=transform(read('index.html'));assert.ok(preview.includes('content="https://brickit-review.example/social-preview.png"'));assert.ok(preview.includes('rel="canonical" href="https://brickit.example/"'));assert.ok(!preview.includes('__SITE_ORIGIN__'));
-  process.env.VERCEL_ENV='production';assert.ok(transform(read('index.html')).includes('content="https://brickit.example/social-preview.png"'));
-  process.env.SITE_URL='http://brickit.example';assert.throws(()=>transform(read('index.html')),/HTTPS/);
+ try{process.env.SITE_URL='https://mann.example';process.env.VERCEL_ENV='preview';process.env.VERCEL_URL='mann-review.example';
+  const preview=transform(read('index.html'));assert.ok(preview.includes('content="https://mann-review.example/social-preview.png"'));assert.ok(preview.includes('rel="canonical" href="https://mann.example/"'));assert.ok(!preview.includes('__SITE_ORIGIN__'));
+  process.env.VERCEL_ENV='production';assert.ok(transform(read('index.html')).includes('content="https://mann.example/social-preview.png"'));
+  process.env.SITE_URL='http://mann.example';assert.throws(()=>transform(read('index.html')),/HTTPS/);
  }finally{keys.forEach((k,i)=>{if(saved[i]===undefined)delete process.env[k];else process.env[k]=saved[i]})}
 });

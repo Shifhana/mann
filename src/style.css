@@ -1,5 +1,6 @@
 @import '@fontsource/dm-sans/latin-400.css';
 @import '@fontsource/dm-sans/latin-500.css';
+@import '@fontsource/dm-sans/latin-ext-500.css';
 @import '@fontsource/dm-sans/latin-600.css';
 @import '@fontsource/crimson-text/latin-600.css';
 
@@ -21,6 +22,7 @@
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 960px; min-height: 100svh; display: grid; place-items: center; }
 .collection {
+  position: relative;
   /* Figma's 838px page includes 218.5px of header, facts and outer spacing.
      Only the 1.618 scene shrinks on shorter desktops; UI dimensions stay fixed. */
   --page-height: min(838px, 100svh);
@@ -226,3 +228,8 @@ body { margin: 0; min-width: 960px; min-height: 100svh; display: grid; place-ite
   .ticker-window { overflow-x: auto; scrollbar-width: thin; }
 }
 .fallback, .render-error { padding: 24px; text-align: center; color: #79634e; }
+
+/* Product identity occupies existing header whitespace; exhibit geometry stays fixed. */
+.product-signature { position: absolute; top: 14px; left: 12px; right: 12px; margin: 0; display: flex; align-items: baseline; gap: 14px; color: #76695C; font: 400 12px/18px 'DM Sans', sans-serif; }
+.product-name { color: #51463b; font-weight: 500; font-size: 14px; white-space: nowrap; }
+.product-name [lang="ta"] { font-family: 'Tiro Tamil', serif; font-size: 13px; }
