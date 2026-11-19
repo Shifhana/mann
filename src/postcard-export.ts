@@ -2,7 +2,7 @@ import { formatCoordinates, type Building } from './buildings.ts';
 
 export const POSTCARD_PNG = { width: 3000, height: 2442 } as const;
 // Preserve the approved 602×490 composition without added side margins.
-export const POSTCARD_LAYOUT = { width: 602, height: 490, compositionWidth: 602, padding: 20, imageWidth: 562, imageHeight: 410, footerY: 452 } as const;
+export const POSTCARD_LAYOUT = { width: 602, height: 490, compositionWidth: 602, padding: 20, imageWidth: 562, imageHeight: 410, footerY: 466 } as const;
 
 /** Paint only the approved artwork. No DOM rasterisation, page UI or overlay. */
 export function paintPostcard(canvas: HTMLCanvasElement, image: HTMLCanvasElement, building: Building) {

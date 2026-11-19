@@ -1,3 +1,5 @@
+@import '@fontsource/dm-sans/latin-400-italic.css';
+
 @font-face {
   font-family: 'DM Mono'; font-style: normal; font-weight: 500;
   font-display: swap; src: url('/fonts/dm-mono/DMMono-Medium.ttf') format('truetype');
@@ -14,8 +16,9 @@
 .postcard-dialog::backdrop { background: rgb(38 33 26 / .8); transition: background 240ms ease; }
 .postcard-dialog.is-closing::backdrop { background: transparent; }
 @starting-style { .postcard-dialog[open]::backdrop { background: transparent; } }
-.postcard-actions { display: flex; justify-content: space-between; gap: 16px; padding-bottom: 14px; }
+.postcard-actions { display: grid; grid-template-columns: 86.6px minmax(0, 1fr) 160.6px; align-items: center; gap: 16px; padding-bottom: 14px; }
 .postcard-action {
+  position: relative;
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   height: 36px; padding: 7px 8px; border: 1px solid #b9a486; border-radius: 4px 4px 0 0;
   background: #f3efe8; color: #51463b; font: 500 13px/20px 'DM Sans', sans-serif;
@@ -27,7 +30,9 @@
 .postcard-action:hover:not(:disabled) { background: #e8dfd2; }
 .postcard-action:disabled { cursor: wait; opacity: .65; }
 .postcard-action:focus-visible { outline: 2px solid #fff8eb; outline-offset: 4px; }
-.postcard-status { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); margin: 0; color: #fff8eb; font: 400 12px/20px 'DM Sans', sans-serif; white-space: nowrap; pointer-events: none; }
+.postcard-status { margin: 0; color: #fff8eb; font: 400 12px/20px 'DM Sans', sans-serif; text-align: center; overflow-wrap: break-word; pointer-events: none; }
+.postcard-status[data-kind="prompt"] { font-style: italic; }
+.postcard-action::before, .postcard-action::after { border-color: #b9a486; }
 .postcard-sheet {
   position: relative; width: 100%; aspect-ratio: 602 / 490; overflow: hidden;
   background: #FAF9F6; color: #3e352e;
@@ -37,9 +42,10 @@
   container-type: inline-size; background: #FAF9F6; color: #3e352e;
 }
 .postcard-content {
-  /* Reference design width: 602. Flow creates explicit, repeatable gaps. */
+  /* Keep the 602×490 image composition. A 14px line-box bottom inset leaves
+     20px below the actual uppercase ink, matching the top and side margins. */
   display: flex; flex-direction: column;
-  padding: calc(100cqw * 20 / 602) calc(100cqw * 20 / 602) calc(100cqw * 28 / 602);
+  padding: calc(100cqw * 20 / 602) calc(100cqw * 20 / 602) calc(100cqw * 14 / 602);
 }
 .postcard-stamp {
   position: relative; width: 100%; aspect-ratio: 562 / 410;
@@ -57,7 +63,7 @@
   letter-spacing: 0; white-space: nowrap;
 }
 .postcard-caption {
-  margin-top: calc(100cqw * 12 / 602);
+  margin-top: calc(100cqw * 26 / 602);
   display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center; column-gap: calc(100cqw * 12 / 602);
 }

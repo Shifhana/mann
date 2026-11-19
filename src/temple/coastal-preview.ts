@@ -8,6 +8,11 @@ export const COAST_TREE_SITES = [[-30,-27],[-22,-25.5],[24,-27],[33,-21]] as con
 const clamp = (v: number) => Math.max(0, Math.min(1, v));
 const smooth = (v: number) => { const t=clamp(v); return t*t*t*(t*(t*6-15)+10); };
 export function coastReveal(elapsed: number) { return clamp(elapsed / COAST_REVEAL_MS); }
+/** Reduced motion can seat the coast before its normal clock has elapsed.
+ * Keep that completed state when motion is enabled again, without replaying it. */
+export function settledCoastStart(start: number | undefined, now: number) {
+  return Math.min(start ?? now, now - COAST_REVEAL_MS);
+}
 export function coastTreeGrowth(index: number, elapsed: number) {
   const start=[1550,1850,2200,1700][index];
   return {trunk:smooth((elapsed-start)/450),lower:smooth((elapsed-start-180)/600),
