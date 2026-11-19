@@ -74,15 +74,15 @@ export function humanSites(definition:TempleDefinition):HumanSite[]{
  const floor=(name:string)=>definition.chambers.find(c=>c.name===name)!.floorY;
  const sites=[
  route({id:'north-arrival',from:[22.45,4,-4.55],yaw:Math.PI/2,scale:.96,delay:400,shirt:'#9B7C64',loop:'concealed'},[
-  {to:[27.5,4,-4.55],duration:6200},{to:[27.5,4,1.1],duration:7100,pause:1100},{to:[25.5,4,1.1],duration:3000},{to:[19.4,4,1.1],duration:8400}]),
+  {to:[27.5,4,-4.55],duration:6200},{to:[27.5,4,1.1],duration:7100,pause:1100},{to:[25.5,4,1.1],duration:3000},{to:[19.4,4,1.1],duration:8400},{to:[12,4,1.1],duration:10200,pause:2200}]),
  route({id:'court-arrival',from:[22.45,4,-4.55],yaw:Math.PI/2,scale:.94,delay:4600,shirt:'#758B8B',loop:'concealed'},[
   {to:[27.5,4,-4.55],duration:6400},{to:[27.5,4,7.4],duration:13900,pause:1700},{to:[25.65,4,7.4],duration:2700},{to:[25.65,4,3.2],duration:5200},{to:[19.4,4,3.2],duration:8400}]),
  route({id:'east-arrival',from:[22.45,4,-4.55],yaw:Math.PI/2,scale:.95,delay:8800,shirt:'#8E9478',loop:'concealed'},[
   {to:[27.5,4,-4.55],duration:6400},{to:[27.5,4,.6],duration:6700},{to:[30.2,3.6,.6],duration:3900},{to:[30.2,3.6,3.1],duration:3800,pause:1800},{to:[27.5,4,3.1],duration:3900},{to:[25.5,4,2],duration:3000},{to:[19.4,4,2],duration:8600}]),
- // Open paving beside the main shrine is visible before the roof is cut away.
- // Face the facade during the initial observation, then explore its real south/east court.
- route({id:'main-visitor',chamber:'main',revealDelay:0,from:[9,floor('main'),12.5],yaw:Math.PI,scale:.94,delay:3200,shirt:'#A18A6E',loop:'circuit'},[
-  {to:[18.4,4,12.5],duration:15000},{to:[18.4,4,8.45],duration:6500},{to:[20.3,4,8.45],duration:3100,pause:2300},{to:[20.3,4,14],duration:9000},{to:[3.2,4,14],duration:27800},{to:[3.2,4,12.5],duration:2500},{to:[9,4,12.5],duration:9500}]),
+ // Start beside the sacred fitting, in the existing clear perimeter aisle.
+ // The circuit leaves both the fitting and the east doorway approach clear.
+ route({id:'main-visitor',chamber:'main',revealDelay:0,from:[10.8,floor('main'),4.8],yaw:-Math.PI/2,scale:.94,delay:3200,shirt:'#A18A6E',loop:'circuit'},[
+  {to:[4.8,4,4.8],duration:12000},{to:[4.8,4,-.8],duration:11200,pause:2300},{to:[10.8,4,-.8],duration:12000},{to:[10.8,4,4.8],duration:11200}]),
  route({id:'secondary-visitor',chamber:'secondary',from:[-23.5,floor('secondary'),-2.5],yaw:Math.PI,scale:.90,delay:2100,shirt:'#7C8B78',loop:'circuit'},[
   {to:[-23.5,3.6,-5.5],duration:6200,pause:2600},{to:[-20.5,3.6,-5.5],duration:6200},{to:[-20.5,3.6,-2.5],duration:6400},{to:[-23.5,3.6,-2.5],duration:6200}]),
  route({id:'vishnu-visitor',chamber:'vishnu',from:[-8.5,floor('vishnu'),4.1],yaw:-Math.PI/2,scale:.90,delay:1500,shirt:'#958374',loop:'circuit'},[

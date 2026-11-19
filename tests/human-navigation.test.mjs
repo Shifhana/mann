@@ -30,7 +30,7 @@ test('visitors reach genuine shrine-room perimeter space and arrivals continue d
   assert.ok(points.length>100,`${site.id} must spend meaningful time beyond its doorway`);
   assert.ok(Math.max(...points.map(p=>p.z))-Math.min(...points.map(p=>p.z))>2.8,`${site.id} reaches along the real room rather than circling only the threshold`);
  }
- const main=sites.find(s=>s.chamber==='main');for(let t=0;t<main.duration;t+=32){const p=humanPose(main,3,t);assert.ok(p.y===4&&p.z>=8.45&&p.z<=14&&p.x>=3.2&&p.x<=20.3,'main observer stays on the existing open south/east court');}
+ const main=sites.find(s=>s.chamber==='main');for(let t=0;t<main.duration;t+=32){const p=humanPose(main,3,t);assert.ok(p.y===4&&p.z>=-.8&&p.z<=4.8&&p.x>=4.8&&p.x<=10.8,'main observer stays in the actual clear perimeter aisle');}
  const ends=sites.slice(0,3).map((s,i)=>humanPose(s,i,s.duration));assert.ok(ends.every(p=>p.x<20&&p.z>0&&p.z<4),'arrivals cross the real studded porch strip, well beyond the east portal');
  assert.equal(new Set(ends.map(p=>p.z)).size,3,'separate lanes inside the porch');
  assert.ok(sites[2].motion.some(m=>m.to[0]>30&&m.to[1]===3.6),'one arrival explores the real entrance steps');
@@ -41,4 +41,10 @@ test('figures retain approved appearance data and independent, deterministic rou
  const again=humanSites(definition);assert.deepEqual(again,sites);
  assert.deepEqual(sites.map(s=>[s.scale,s.shirt]),[[.96,'#9B7C64'],[.94,'#758B8B'],[.95,'#8E9478'],[.94,'#A18A6E'],[.90,'#7C8B78'],[.90,'#958374']]);
  assert.equal(new Set(sites.map(s=>Math.round(s.duration))).size,6);
+});
+
+
+test('one entrance visitor reaches the clear main-shrine approach rather than ending in the vestibule',()=>{
+ const arrival=sites[0],end=humanPose(arrival,0,arrival.duration);assert.equal(end.x,12);assert.equal(end.z,1.1);
+ assert.ok(arrival.motion.some(m=>m.kind==='walk'&&m.from[0]>17&&m.to[0]<13),'approach traverses the actual east opening');
 });

@@ -1,5 +1,5 @@
 /** Pixels per second; the ticker is compositor-only, with no render-loop timer. */
-export const TICKER_SPEED=21;
+export const TICKER_SPEED=31.5;
 export function tickerDuration(width:number){return Number.isFinite(width)&&width>0?width/TICKER_SPEED*1000:60000;}
 
 export function installFacts(root:HTMLElement){
