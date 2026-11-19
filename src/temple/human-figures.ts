@@ -18,7 +18,7 @@ function supportField(definition:TempleDefinition){
  };
 }
 type Part={name:string;kind:'body'|'round';color:string};
-function parts(site:HumanSite,index:number):Part[]{const skin=index%2?'#C0A178':'#CFB187',pants=index%2?'#777063':'#687770';const a:Part[]=[{name:'torso',kind:'body',color:site.shirt},{name:'pelvis',kind:'body',color:pants},{name:'neck',kind:'round',color:skin},{name:'head',kind:'round',color:skin},{name:'stud',kind:'round',color:skin}];for(const side of ['left','right'])a.push({name:side+'-thigh',kind:'body',color:pants},{name:side+'-shin',kind:'body',color:pants},{name:side+'-foot',kind:'body',color:'#655D4F'},{name:side+'-upper-arm',kind:'body',color:site.shirt},{name:side+'-forearm',kind:'body',color:site.shirt},{name:side+'-hand',kind:'round',color:skin});return a;}
+function parts(site:HumanSite,index:number):Part[]{const shrineWoman=site.id==='main-visitor';const skin=index%2?'#C0A178':'#CFB187',pants=shrineWoman?'#796A65':index%2?'#777063':'#687770',shirt=shrineWoman?'#9A7A79':site.shirt;const a:Part[]=[{name:'torso',kind:'body',color:shirt},{name:'pelvis',kind:'body',color:pants},{name:'neck',kind:'round',color:skin},{name:'head',kind:'round',color:skin},{name:'stud',kind:'round',color:shrineWoman?'#4F4037':skin}];if(shrineWoman)a.push({name:'hair-cap',kind:'round',color:'#4F4037'},{name:'hair-back',kind:'body',color:'#4F4037'});for(const side of ['left','right'])a.push({name:side+'-thigh',kind:'body',color:pants},{name:side+'-shin',kind:'body',color:pants},{name:side+'-foot',kind:'body',color:'#655D4F'},{name:side+'-upper-arm',kind:'body',color:shirt},{name:side+'-forearm',kind:'body',color:shirt},{name:side+'-hand',kind:'round',color:skin});return a;}
 
 export function createHumanFigures(definition:TempleDefinition){
   const sites=humanSites(definition),group=new Group();group.name='human-scale-figures';group.visible=false;group.userData.sites=sites;
@@ -85,7 +85,10 @@ export function createHumanFigures(definition:TempleDefinition){
       const segment=(name:string,x1:number,y1:number,z1:number,x2:number,y2:number,z2:number,w:number,d:number)=>{
         direction.set(x1-x2,y1-y2,z1-z2);const length=direction.length();direction.divideScalar(length);q.setFromUnitVectors(axisY,direction);const {mesh,index}=mapped[i][name];position.set((x1+x2)/2,(y1+y2)/2,(z1+z2)/2).multiplyScalar(s).applyQuaternion(body);position.x+=pose.x;position.y+=pose.y;position.z+=pose.z;q.premultiply(body);scale.set(w*s,length*s,d*s);matrix.compose(position,q,scale);mesh.setMatrixAt(index,matrix);(mesh.geometry.getAttribute('figureReveal') as InstancedBufferAttribute).setX(index,pose.reveal);
       };
-      put('pelvis',0,1.11,0,.45,.18,.32);put('torso',0,1.44,0,.54,.64,.35);put('neck',0,1.81,0,.22,.14,.22);put('head',0,2.02,0,.44,.44,.44);put('stud',0,2.28,0,.18,.08,.18);
+      put('pelvis',0,1.11,0,site.id==='main-visitor'?.49:.45,.18,.32);put('torso',0,1.44,0,.54,.64,.35);put('neck',0,1.81,0,.22,.14,.22);put('head',0,2.02,0,.44,.44,.44);put('stud',0,2.28,0,.18,.08,.18);
+      // A restrained toy-like hairstyle distinguishes the main-shrine visitor.
+      // Reuse the existing two instanced materials and meshes: no extra draw calls.
+      if(site.id==='main-visitor'){put('hair-cap',0,2.225,0,.47,.115,.47);put('hair-back',0,1.96,-.225,.43,.36,.12);}
       for(const [j,side,sign]of [[0,'left',-1],[1,'right',1]] as const){
         const foot=supports[j],ankle=(foot.y+.14*s-pose.y)/s,z=foot.offset/s,dy=ankle-1.08,length=Math.hypot(dy,z),bend=Math.sqrt(Math.max(0,.5**2-length**2/4)),kneeY=(1.08+ankle)/2+bend*z/length,kneeZ=z/2-bend*dy/length,x=sign*.12,footX=((foot.x-pose.x)*c-(foot.z-pose.z)*sn)/s;
         segment(side+'-thigh',x,1.08,0,(x+footX)/2,kneeY,kneeZ,.17,.20);segment(side+'-shin',(x+footX)/2,kneeY,kneeZ,footX,ankle,z,.155,.18);put(side+'-foot',footX,(foot.y+.07*s-pose.y)/s,z,.19,.14,.34);
