@@ -1,12 +1,12 @@
 import type { RenderedTemple } from './temple/render.ts';
 import { formatCoordinates, type Building } from './buildings.ts';
 import { postcardFilename, postcardPng } from './postcard-export.ts';
+const SHARE_PROMPT='Share this little piece of history.';
 
 export function installPostcard(button: HTMLButtonElement, container: HTMLElement, temple: RenderedTemple, building: Building) {
   const dialog=document.createElement('dialog');dialog.className='postcard-dialog';
   dialog.setAttribute('aria-labelledby','postcard-title');
-  dialog.innerHTML=`<div class="postcard-actions"><button class="postcard-close postcard-action" type="button" autofocus aria-label="Back — close postcard preview"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M13 8H3m5-5L3 8l5 5"/></svg><span>Back</span></button><button class="postcard-download postcard-action" type="button" aria-label="Download Postcard as a 3000 by 2442 PNG"><img src="/ui/download.svg" width="16" height="16" alt="" aria-hidden="true"><span>Download Postcard</span></button></div>
-    <p class="postcard-status" role="status" aria-live="polite"></p>
+  dialog.innerHTML=`<div class="postcard-actions"><button class="postcard-close postcard-action" type="button" autofocus aria-label="Back — close postcard preview"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M13 8H3m5-5L3 8l5 5"/></svg><span>Back</span></button><p class="postcard-status" role="status" aria-live="polite" aria-atomic="true">${SHARE_PROMPT}</p><button class="postcard-download postcard-action" type="button" aria-label="Download Postcard as a 3000 by 2442 PNG"><img src="/ui/download.svg" width="16" height="16" alt="" aria-hidden="true"><span>Download Postcard</span></button></div>
     <article class="postcard-sheet">
       <div class="postcard-composition">
       <div class="postcard-content">
@@ -49,7 +49,7 @@ export function installPostcard(button: HTMLButtonElement, container: HTMLElemen
       capture??=temple.capturePostcard();
       capture.setAttribute('role','img');capture.setAttribute('aria-label',`The completed LEGO model of ${building.name}, ${building.location}, viewed from the exterior.`);
       art.replaceChildren(capture);
-      status.textContent='';
+      status.textContent=SHARE_PROMPT;status.dataset.kind='prompt';
       returnFocus=document.activeElement instanceof HTMLElement?document.activeElement:button;
       dialog.showModal();closeButton.focus({preventScroll:true});void animate(true);
     } catch(error) {console.error('Unable to prepare the postcard preview.',error);}
@@ -66,7 +66,7 @@ export function installPostcard(button: HTMLButtonElement, container: HTMLElemen
     if(exporting||disposed||closing||!dialog.open||!ready())return;
     const current=revision;
     exporting=true;downloadButton.disabled=true;downloadButton.setAttribute('aria-busy','true');
-    status.textContent='Preparing your PNG…';
+    status.textContent='Preparing your PNG…';status.dataset.kind='busy';
     const cancelled=()=>disposed||closing||!dialog.open||current!==revision;
     try {
       const blob=await (png??postcardPng(()=>{
@@ -83,7 +83,7 @@ export function installPostcard(button: HTMLButtonElement, container: HTMLElemen
       link.href=url;link.download=postcardFilename(building);
       document.body.append(link);
       try {link.click();}finally {link.remove();}
-      status.textContent='PNG downloaded.';
+      status.textContent='Your postcard is downloaded.';status.dataset.kind='complete';
     } catch(error) {
       if(!cancelled()) {
         status.textContent='Unable to create the PNG. Please try again.';

@@ -1,4 +1,4 @@
-export type EnvironmentHover = 'sea' | 'tree' | 'none';
+export type EnvironmentHover = 'sea' | 'none';
 
 import {coastalPCM} from './coastal-pcm.ts';
 export {coastalPCM} from './coastal-pcm.ts';
@@ -29,13 +29,13 @@ export class EnvironmentAudio {
     const {context: ctx, node} = out;
     // Prepare the original noise off the render thread. First-hover synthesis
     // otherwise occupies a full frame budget on integrated-GPU laptops.
-    if (typeof Worker !== 'undefined' && this.buffers.size < 2) {
+    if (typeof Worker !== 'undefined' && !this.buffers.has('sea')) {
       if (!this.worker) {
         const worker = this.worker = new Worker(new URL('./environment-audio-worker.ts', import.meta.url), {type: 'module'});
-        worker.onmessage = ({data}: MessageEvent<{sea: Float32Array<ArrayBuffer>[]; tree: Float32Array<ArrayBuffer>[]}>) => {
+        worker.onmessage = ({data}: MessageEvent<{sea: Float32Array<ArrayBuffer>[]}>) => {
           worker.terminate(); this.worker = undefined;
           if (this.disposed) return;
-          for (const kind of ['sea', 'tree'] as const) { const pcm = data[kind], buffer = ctx.createBuffer(2, pcm[0].length, ctx.sampleRate); pcm.forEach((p, i) => buffer.copyToChannel(p, i)); this.buffers.set(kind, buffer); }
+          const pcm = data.sea, buffer = ctx.createBuffer(2, pcm[0].length, ctx.sampleRate); pcm.forEach((p, i) => buffer.copyToChannel(p, i)); this.buffers.set('sea', buffer);
           this.sync();
         };
         worker.onerror = () => { worker.terminate(); this.worker = undefined; this.enabled = false; console.warn('Coastal audio preparation unavailable.'); };
@@ -43,18 +43,18 @@ export class EnvironmentAudio {
       }
       return;
     }
-    for (const kind of ['sea', 'tree'] as const) {
+    for (const kind of ['sea'] as const) {
       let bed = this.beds.get(kind);
       const active = this.hover === kind;
       if (!bed && active) {
         let buffer = this.buffers.get(kind);
-        if (!buffer) { const pcm = coastalPCM(kind, ctx.sampleRate); buffer = ctx.createBuffer(2, pcm[0].length, ctx.sampleRate); pcm.forEach((p, i) => buffer!.copyToChannel(p, i)); this.buffers.set(kind, buffer); }
+        if (!buffer) { const pcm = coastalPCM(ctx.sampleRate); buffer = ctx.createBuffer(2, pcm[0].length, ctx.sampleRate); pcm.forEach((p, i) => buffer!.copyToChannel(p, i)); this.buffers.set(kind, buffer); }
         const source = ctx.createBufferSource(), gain = ctx.createGain(); source.buffer = buffer; source.loop = true; gain.gain.value = 0; source.connect(gain); gain.connect(node); source.start(); bed = {source, gain}; this.beds.set(kind, bed);
       }
       if (!bed) continue;
       clearTimeout(bed.timer);
       bed.gain.gain.cancelAndHoldAtTime(ctx.currentTime);
-      bed.gain.gain.linearRampToValueAtTime(active ? (kind === 'sea' ? .19 : .15) : 0, ctx.currentTime + (active ? .6 : .8));
+      bed.gain.gain.linearRampToValueAtTime(active ? .07 : 0, ctx.currentTime + (active ? .6 : .8));
       if (!active) { const retiring = bed; bed.timer = setTimeout(() => { if (this.beds.get(kind) !== retiring) return; retiring.source.stop(); retiring.source.disconnect(); retiring.gain.disconnect(); this.beds.delete(kind); }, 850); }
     }
   }

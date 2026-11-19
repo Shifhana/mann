@@ -44,6 +44,7 @@ test('postcard gates capture until scenery is complete and preserves focus and k
   assert.equal(dialog.querySelector('#postcard-title').textContent,'Another Hall');
   assert.equal(dialog.querySelector('.postcard-coordinates').textContent,'33°51′24″S 151°12′55″E');
   button.dispatchEvent(new Event('click'));assert.equal(dialog.open,true);assert.equal(captures.length,1);assert.equal(document.activeElement,dialog.querySelector('.postcard-close'));
+  assert.equal(dialog.querySelector('.postcard-status').textContent,'Share this little piece of history.');
   const tab=new Event('keydown',{cancelable:true});Object.defineProperty(tab,'key',{value:'Tab'});dialog.dispatchEvent(tab);assert.equal(tab.defaultPrevented,true);
   assert.equal(document.activeElement,dialog.querySelector('.postcard-download'));
   dialog.dispatchEvent(tab);assert.equal(document.activeElement,dialog.querySelector('.postcard-close'));
@@ -62,6 +63,7 @@ test('PNG export guards concurrent clicks, uses high-resolution capture and dyna
   assert.equal(f.captures.length,2);assert.equal(f.captures[1].captureScale,2);assert.equal(f.encodings.length,1);
   f.encodings.shift()(new Blob(['png'],{type:'image/png'}));await flush();
   assert.equal(download.disabled,false);assert.equal(f.downloads.length,1);assert.equal(f.downloads[0].name,'mann-another-hall-postcard.png');
+  assert.equal(f.dialog.querySelector('.postcard-status').textContent,'Your postcard is downloaded.');
   assert.equal(f.captures[1].width,0);assert.equal(f.captures[0].width,16,'preview canvas must remain intact');
   download.click();await flush();assert.equal(f.downloads.length,2);assert.equal(f.captures.length,2,'reuse the PNG on a repeated download');
   f.preview.reset();await flush();openReady(f);download.click();await flush();assert.equal(f.captures.length,4,'Rebuild invalidates both preview and PNG');

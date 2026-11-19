@@ -32,7 +32,7 @@ npm run preview
 
 ## Behaviour and accessibility
 
-The main-page location label uses #76695C on #F3EFE8 (4.64:1 contrast), retaining its original typography and position. The fixed camera, five-second timeline and existing architecture remain unchanged. Hover or focus the completed temple to reveal its plan; leaving or moving focus away restores the exterior. Enter/Space and Escape are also supported. The viewport is an accessible group containing a separately named plan control. The heading and controls support keyboard focus; the ticker pauses on hover/focus. Reduced motion shows a completed, stationary model and disables decorative motion.
+The main-page location label uses #76695C on #F3EFE8 (4.64:1 contrast), retaining its original typography and position. The fixed camera, five-second timeline and existing architecture remain unchanged. Click the completed temple to reveal its plan and click again to restore the exterior. Hover and keyboard focus provide a subtle sandstone highlight. Enter/Space toggle the plan; Escape restores the exterior. Visible visitors and scenery block pointer activation. The viewport is an accessible group containing a separately named plan control. The heading and controls support keyboard focus; the ticker pauses on hover/focus. Reduced motion shows a completed, stationary model and disables decorative motion.
 
 Visitors begin after the landscape settles. Exterior visitor recycling requires masonry concealment and pauses while plan view exposes reset locations. Figures and environmental interactions sleep when the page is hidden. Normal visitor movement intentionally renders while active.
 

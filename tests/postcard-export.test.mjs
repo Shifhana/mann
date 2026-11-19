@@ -16,7 +16,7 @@ test('PNG preserves the approved 602×490 composition at 3000×2442 without side
   assert.deepEqual(calls.find(c=>c[0]==='stroke'),['stroke','#583622',.2]);
   const imageCall=calls.find(c=>c[0]==='image');assert.deepEqual(imageCall.slice(-4),[20,20,562,410]);assert.ok(imageCall[2]>=0&&imageCall[3]>=0);
   const text=calls.filter(c=>c[0]==='text');
-  assert.deepEqual(text.map(c=>[c[2],c[5],c[6],c[7]]),[['#583622','ANOTHER HALL',20,455],['#77716B','33°51′24″S 151°12′55″E',301,455],['#807060','SYDNEY',582,455]]);
+  assert.deepEqual(text.map(c=>[c[2],c[5],c[6],c[7]]),[['#583622','ANOTHER HALL',20,469],['#77716B','33°51′24″S 151°12′55″E',301,469],['#807060','SYDNEY',582,469]]);
   assert.deepEqual(text.map(c=>c[1]),["500 12px 'DM Mono', monospace","400 11px 'DM Mono', monospace","500 12px 'DM Mono', monospace"]);
   assert.throws(()=>paintPostcard({getContext:()=>null},image,{}),/Unable to create/);
   assert.equal(postcardFilename({name:'São / Hall?'}),'mann-sao-hall-postcard.png');

@@ -46,7 +46,8 @@ body { margin: 0; min-width: 960px; min-height: 100svh; display: grid; place-ite
 /* Extend only the hit area to cover the larger Tamil run; the layout stays 144px. */
 .heritage-heading::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 200px; }
 .heritage-heading span { pointer-events: none; white-space: nowrap; }
-.heading-english { display: block; opacity: 1; }
+/* Keep Crimson's fine curved strokes continuous at the approved 20px size. */
+.heading-english { display: block; opacity: 1; -webkit-text-stroke: .15px currentColor; paint-order: stroke fill; }
 .heading-tamil {
   position: absolute; left: 0; top: 0px; width: 200px; height: 28px;
   font: 400 17.25px/28px 'Tiro Tamil', serif; letter-spacing: 0; opacity: 0;
@@ -59,6 +60,7 @@ body { margin: 0; min-width: 960px; min-height: 100svh; display: grid; place-ite
 .heritage-heading:focus-visible { outline: none; }
 .heritage-heading:focus-visible::before { outline: 1px solid #b59a73; outline-offset: 4px; }
 .location {
+  position: relative;
   margin: 0;
   width: 222px;
   color: #76695C;
@@ -68,6 +70,15 @@ body { margin: 0; min-width: 960px; min-height: 100svh; display: grid; place-ite
   letter-spacing: .005em;
   text-align: right;
 }
+.location:focus-visible { outline: 1px solid #b59a73; outline-offset: 4px; }
+.location-place { display: block; white-space: nowrap; }
+.location-position { position: absolute; inset: 0; white-space: nowrap; opacity: 0; }
+.location[data-heading-language="tamil"] .location-place,
+.location[data-dissolving] .location-place,
+.location[data-dissolving] .location-position { opacity: 0; }
+.location[data-heading-language="tamil"]:not([data-dissolving]) .location-position { opacity: 1; }
+.location .heading-particles { left: -12px; width: 252px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .frame-shell { position: relative; width: 100%; }
 .exhibit {
   position: relative;
@@ -167,7 +178,9 @@ body { margin: 0; min-width: 960px; min-height: 100svh; display: grid; place-ite
 /* Flat connector tabs share the button fill and the frame's single gold tone.
    Only the decoration grows: button/group boxes and the SVG contour stay fixed. */
 .controls .control-button::before,
-.controls .control-button::after {
+.controls .control-button::after,
+.postcard-action::before,
+.postcard-action::after {
   content: '';
   position: absolute;
   top: calc(100% - 1px);
@@ -183,10 +196,12 @@ body { margin: 0; min-width: 960px; min-height: 100svh; display: grid; place-ite
   opacity: 0;
   transition: transform 210ms cubic-bezier(.18,.85,.35,1.22), opacity 120ms ease;
 }
-.controls .control-button::before { left: calc(50% - 18px); }
-.controls .control-button::after { left: calc(50% + 6px); }
+.controls .control-button::before, .postcard-action::before { left: calc(50% - 18px); }
+.controls .control-button::after, .postcard-action::after { left: calc(50% + 6px); }
 .controls .control-button:not(:disabled):is(:hover, :focus-visible)::before,
-.controls .control-button:not(:disabled):is(:hover, :focus-visible)::after {
+.controls .control-button:not(:disabled):is(:hover, :focus-visible)::after,
+.postcard-action:not(:disabled):is(:hover, :focus-visible)::before,
+.postcard-action:not(:disabled):is(:hover, :focus-visible)::after {
   transform: scaleY(1);
   opacity: 1;
 }
@@ -222,14 +237,13 @@ body { margin: 0; min-width: 960px; min-height: 100svh; display: grid; place-ite
 @keyframes fact-ticker { to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) {
   .controls .control-button::before,
-  .controls .control-button::after { transition: none; }
+  .controls .control-button::after,
+  .postcard-action::before, .postcard-action::after { transition: none; }
   .facts[data-ready] .ticker-track { animation: none; transform: none; }
   .ticker-copy { display: none; }
   .ticker-window { overflow-x: auto; scrollbar-width: thin; }
 }
 .fallback, .render-error { padding: 24px; text-align: center; color: #79634e; }
 
-/* Product identity occupies existing header whitespace; exhibit geometry stays fixed. */
-.product-signature { position: absolute; top: 14px; left: 12px; right: 12px; margin: 0; display: flex; align-items: baseline; gap: 14px; color: #76695C; font: 400 12px/18px 'DM Sans', sans-serif; }
-.product-name { color: #51463b; font-weight: 500; font-size: 14px; white-space: nowrap; }
-.product-name [lang="ta"] { font-family: 'Tiro Tamil', serif; font-size: 13px; }
+.exhibit:has(canvas:focus-visible) { outline: 2px solid #99704c; outline-offset: 4px; }
+.exhibit canvas:focus-visible { outline: none; }

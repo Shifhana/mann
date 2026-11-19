@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { COAST_START_MS, COAST_REVEAL_MS, COAST_TREE_SITES, coastReveal, coastTreeGrowth, coastAppearance, createCoastalLandscape } from '../src/temple/coastal-preview.ts';
+import { COAST_START_MS, COAST_REVEAL_MS, COAST_TREE_SITES, coastReveal, settledCoastStart, coastTreeGrowth, coastAppearance, createCoastalLandscape } from '../src/temple/coastal-preview.ts';
 
 test('landscape growth has a deterministic 4.5-second clock with no overshoot', () => {
   assert.equal(COAST_START_MS, 2000);
@@ -15,6 +15,15 @@ test('landscape growth has a deterministic 4.5-second clock with no overshoot', 
     const value = coastReveal(t);
     assert.ok(value >= previous && value <= 1);
     previous = value;
+  }
+});
+
+test('enabling motion after an instant completed coast preserves sand, water and every grown tree',()=>{
+  const now=1000;
+  for(const original of [undefined,now+COAST_START_MS,now-100,now-10000]){
+    const start=settledCoastStart(original,now);
+    if(original!==undefined&&now-original>=COAST_REVEAL_MS)assert.equal(start,original,'normal completed clocks do not change');
+    for(const delta of [0,16,500,4500]){const elapsed=now+delta-start;assert.equal(coastReveal(elapsed),1);assert.equal(coastAppearance(elapsed).sand,1);assert.equal(coastAppearance(elapsed).sea,1);for(let i=0;i<4;i++)assert.deepEqual(coastTreeGrowth(i,elapsed),{trunk:1,lower:1,upper:1,studs:1});}
   }
 });
 

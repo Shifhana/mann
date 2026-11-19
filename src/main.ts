@@ -15,11 +15,13 @@ import { installFacts } from './facts.ts';
 import { installPostcard } from './postcard.ts';
 import { shoreTemple } from './buildings.ts';
 import { installHeritageHeading } from './heritage-heading.ts';
+import { installLocationDissolve } from './location-dissolve.ts';
 
 const container = document.querySelector<HTMLElement>('#temple-viewport')!;
 const facts=installFacts(document.querySelector<HTMLElement>('.facts')!);
-const heading=installHeritageHeading(document.querySelector<HTMLElement>('.heritage-heading')!);
-if(import.meta.hot)import.meta.hot.dispose(()=>{facts.dispose();heading.dispose();});
+const heading=installHeritageHeading(document.querySelector<HTMLElement>('.heritage-heading')!,document.fonts,container);
+const locationDissolve=installLocationDissolve(document.querySelector<HTMLElement>('.location')!,shoreTemple);
+if(import.meta.hot)import.meta.hot.dispose(()=>{facts.dispose();heading.dispose();locationDissolve.dispose();});
 
 try {
   const inspection = import.meta.env.DEV ? new URLSearchParams(location.search).get('compare') : null;
@@ -68,6 +70,7 @@ try {
   let restarting = false;
   rebuild.addEventListener('click', async () => {
     if (restarting || container.dataset.state !== 'complete') return;
+    heading.resetDemo();
     environmentSound.reset();
     restarting = true;
     rebuild.disabled = true;

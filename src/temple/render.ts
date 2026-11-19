@@ -7,7 +7,7 @@ import {
 import { BUILD_DURATION, createMotionPlan, remaining, turnAngle } from './animation.ts';
 import { BOUNCE_HEIGHT, LANDING_GLSL, PROTOTYPE_DURATION, landingOffset, prototypeAngle, type LandingMotion } from './landing-prototype.ts';
 import { planBatches } from './batching.ts';
-import { COAST_START_MS, COAST_REVEAL_MS, coastReveal, createCoastalLandscape } from './coastal-preview.ts';
+import { COAST_START_MS, COAST_REVEAL_MS, coastReveal, settledCoastStart, createCoastalLandscape } from './coastal-preview.ts';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { disposeGeometries, geometryKey, partGeometry } from './geometry.ts';
 import type { BrickRecord, MaterialRole, TempleDefinition } from './types.ts';
@@ -16,6 +16,7 @@ import { postcardCamera } from './postcard-camera.ts';
 import { createPostcardScene } from './postcard-scene.ts';
 import { createTreeInteraction } from './tree-interaction.ts';
 import { planCutHeight } from './plan-timeline.ts';
+import { TempleInteraction, createTemplePicker } from './temple-interaction.ts';
 import { createSeaWaves } from './sea-waves.ts';
 import { createHumanFigures } from './human-figures.ts';
 
@@ -71,6 +72,9 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
   ])) as Record<MaterialRole, MeshStandardMaterial>;
 
   const clock = { value: duration };
+  const templeHover = {value: 0};
+  const templeInteraction = new TempleInteraction();
+  let hoverAnimating = false;
   const shaderMotion = (shader: { uniforms: Record<string, unknown>; vertexShader: string; fragmentShader: string }) => {
     shader.uniforms.buildTime = clock;
     shader.vertexShader = 'attribute vec4 buildMotion; attribute float buildDrop; attribute float buildBounce; attribute float buildEntry; attribute float buildDamping; uniform float buildTime; varying float buildOpacity;\n' + shader.vertexShader;
@@ -89,6 +93,9 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
       float grain=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));
       if(buildOpacity<=grain) discard;`);
     planView?.patchShader(shader);
+    shader.uniforms.templeHover=templeHover;
+    shader.fragmentShader='uniform float templeHover;\n'+shader.fragmentShader;
+    shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\nreflectedLight.indirectDiffuse+=vec3(.46,.32,.18)*templeHover*.025;');
   };
   // The four stone materials share every property except their linear colour.
   // Instance colours allow equal part geometries to share a draw submission.
@@ -248,20 +255,25 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     return planView.detailTop(p)<=height&&(!planView.eligible(p)||hit.point.y<=height);
   }) : undefined;
   const humans=createHumanFigures(definition);scene.add(humans.group);
+  const templePicker=createTemplePicker(root.children.filter((o):o is InstancedMesh=>o instanceof InstancedMesh),camera,(id,y)=>{
+    if(!planView||planView.timeline.progress===0)return true;
+    const p=piecesById.get(id)!,height=planCutHeight(planView.timeline.progress);
+    return planView.detailTop(p)<=height&&(!planView.eligible(p)||y<=height);
+  },planView?.group,coast?.group,humans.group);
   let humanAnimating=false,humanWake=0;
   const clearHumans=()=>{clearTimeout(humanWake);humanWake=0;humanAnimating=false;humans.reset();};
   let seaHover=false, audiblePlan=0;
-  const environmentHover=()=>container.dispatchEvent(new CustomEvent('environmenthover',{detail:treeHover>=0?'tree':seaHover?'sea':'none'}));
+  const environmentHover=()=>container.dispatchEvent(new CustomEvent('environmenthover',{detail:seaHover?'sea':'none'}));
   let seaAnimating=false;
   const clearSeaWaves=()=>{seaWaves?.reset();seaAnimating=false;seaHover=false;environmentHover();};
   let treeHover=-1,treeAnimating=false;
-  const clearTrees=()=>{treeInteraction?.reset();treeHover=-1;treeAnimating=false;renderer.domElement.style.cursor='';environmentHover();};
+  const clearTrees=()=>{treeInteraction?.reset();treeHover=-1;treeAnimating=false;renderer.domElement.style.cursor='';};
   let disposed = false, scheduledFrame = 0, renderCount = 0, shadowStatic=false;
   let viewportWidth = 0, viewportHeight = 0;
   let running = false, started = 0, deadline = 0, warming = true, openingFrame = false;
   let coastStarted: number | undefined, coastAllowed = false, coastAnimating = false;
   let frameCount=0,frameTotal=0,maxFrame=0,lastFrame=0;
-  let pointerOnCanvas = false, pointerX = 0, pointerY = 0, hoverInside = false, keyboardFocus = false;
+  let keyboardFocus = false;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const rebuild = () => {
     if (disposed || warming) return;
@@ -269,7 +281,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     clearSeaWaves();
     clearHumans();
     planView?.reset();audiblePlan=0;
-    pointerOnCanvas = hoverInside = keyboardFocus = false;
+    keyboardFocus = false;templeInteraction.reset();templeHover.value=0;hoverAnimating=false;
     if (coast) { coastStarted = undefined; coastAllowed = true; coast.setReveal(0); }
     clearTimeout(deadline);
     started = performance.now(); lastFrame = started; frameCount=0;frameTotal=0;maxFrame=0;
@@ -324,7 +336,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
       container.dataset.planProgress = String(planView.timeline.progress);
       renderer.domElement.setAttribute('aria-pressed', String(planView.timeline.target === 1));
       renderer.domElement.setAttribute('aria-disabled', String(!readyForPlan()));
-      renderer.domElement.setAttribute('aria-label', 'Shore Temple. Hover or focus to reveal its architectural plan; leave or move focus away to restore the exterior.');
+      renderer.domElement.setAttribute('aria-label', 'Shore Temple architectural plan');
     }
     treeAnimating=!!treeInteraction&&readyForPlan()&&treeInteraction.update(now);
     seaAnimating=!!seaWaves&&readyForPlan()&&seaWaves.update(now);
@@ -338,7 +350,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     // Water and the figures' planar contact shadows do not cast. During their motion the cached
     // sun map is identical; keep the original policy for every other redraw.
     const staticScene=!running&&!coastAnimating&&!planView?.animating&&!treeAnimating;
-    renderer.shadowMap.needsUpdate = !((seaAnimating||humanAnimating)&&staticScene&&shadowStatic);
+    renderer.shadowMap.needsUpdate = !((seaAnimating||humanAnimating||hoverAnimating)&&staticScene&&shadowStatic);
     renderer.render(scene, camera);
     shadowStatic=staticScene;
     container.dataset.cpuFrameMs=String(performance.now()-cpuStart);
@@ -351,7 +363,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     container.closest('figure')?.setAttribute('aria-busy', 'false');
     container.dispatchEvent(new Event('templeframe'));
     container.dispatchEvent(new CustomEvent('buildprogress', {detail:{elapsed:clock.value,building:running,timelineSampleTime:now,renderedAt:performance.now()}}));
-    if (running || coastAnimating || planView?.animating || treeAnimating || seaAnimating || humanAnimating) requestRender();
+    if (running || coastAnimating || planView?.animating || treeAnimating || seaAnimating || humanAnimating || hoverAnimating) requestRender();
     else if(humanFrame.wakeAt!==undefined)humanWake=window.setTimeout(()=>{humanWake=0;requestRender();},Math.max(0,humanFrame.wakeAt-now));
   };
   const requestRender = () => {
@@ -361,17 +373,29 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
   const readyForPlan = () => !warming && !running && container.dataset.state === 'complete' && (!coast || container.dataset.landscape === 'complete');
   const syncPlanInput = (now: number) => {
     if (!planView) return false;
-    hoverInside = treeHover<0 && pointerOnCanvas && planView.containsPointer(pointerX, pointerY, hoverInside);
-    return planView.setRevealed(readyForPlan() && (hoverInside || keyboardFocus), now, reduced.matches);
+    templeInteraction.ready=readyForPlan();templeInteraction.focused=keyboardFocus;
+    hoverAnimating=templeInteraction.update(now,reduced.matches);templeHover.value=templeInteraction.strength+.85*templeInteraction.settle;
+    container.dataset.templeHover=String(templeHover.value);
+    return planView.setRevealed(templeInteraction.ready&&templeInteraction.revealed,now,reduced.matches);
   };
-  const updatePlanInput = () => { if (syncPlanInput(performance.now())) requestRender(); };
+  const updatePlanInput = () => { if(planView){syncPlanInput(performance.now());requestRender();} };
+  const pickTemple=(event:PointerEvent|MouseEvent)=>{
+    if(!planView||!readyForPlan())return false;
+    const rect=renderer.domElement.getBoundingClientRect();
+    const x=event.clientX-rect.left,y=event.clientY-rect.top;
+    return planView.containsPointer(x,y,false)&&templePicker.hit(x,y,rect.width,rect.height);
+  };
   const onPlanPointer = (event: PointerEvent) => {
-    if (event.pointerType === 'touch') return;
-    const rect = renderer.domElement.getBoundingClientRect();
-    pointerOnCanvas = true; pointerX = event.clientX - rect.left; pointerY = event.clientY - rect.top;
+    if(event.pointerType==='touch')return;
+    const rect=renderer.domElement.getBoundingClientRect();
+    if(!planView?.containsPointer(event.clientX-rect.left,event.clientY-rect.top,false))templeInteraction.endHover();
+    templeInteraction.hovered=pickTemple(event);
+    renderer.domElement.style.cursor=treeHover>=0||templeInteraction.hovered?'pointer':'';
     updatePlanInput();
   };
-  const onPlanLeave = () => { pointerOnCanvas = hoverInside = false; updatePlanInput(); };
+  const onPlanLeave = () => { templeInteraction.endHover();renderer.domElement.style.cursor=treeHover>=0||templeInteraction.hovered?'pointer':'';updatePlanInput(); };
+  const activatePlan=()=>{templeInteraction.ready=readyForPlan();if(templeInteraction.activate())updatePlanInput();};
+  const onPlanClick=(event:MouseEvent)=>{if(event.button===0&&(event.detail===0||pickTemple(event)))activatePlan();};
   const pickTree=(event:PointerEvent|MouseEvent)=>{
     if(!treeInteraction||!readyForPlan())return -1;
     const rect=renderer.domElement.getBoundingClientRect();
@@ -379,11 +403,11 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
   };
   const onTreePointer=(event:PointerEvent)=>{
     if(event.pointerType==='touch')return;
-    treeHover=pickTree(event);environmentHover();renderer.domElement.style.cursor=treeHover>=0?'pointer':'';
+    treeHover=pickTree(event);renderer.domElement.style.cursor=treeHover>=0?'pointer':'';
     if(treeInteraction?.hover(treeHover,performance.now(),reduced.matches))requestRender();
     updatePlanInput();
   };
-  const onTreeLeave=()=>{treeHover=-1;environmentHover();renderer.domElement.style.cursor='';if(treeInteraction?.hover(-1,performance.now(),reduced.matches))requestRender();};
+  const onTreeLeave=()=>{treeHover=-1;renderer.domElement.style.cursor=templeInteraction.hovered?'pointer':'';if(treeInteraction?.hover(-1,performance.now(),reduced.matches))requestRender();};
   const onTreeClick=(event:MouseEvent)=>{const hit=pickTree(event);if(treeInteraction?.nudge(hit,performance.now(),reduced.matches))requestRender();};
   const onSeaPointer=(event:PointerEvent)=>{
     if(event.pointerType==='touch'||!seaWaves)return;
@@ -396,8 +420,8 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
   const onPlanFocus = () => { keyboardFocus = renderer.domElement.matches(':focus-visible'); updatePlanInput(); };
   const onPlanBlur = () => { keyboardFocus = false; updatePlanInput(); };
   const onPlanKey = (event: KeyboardEvent) => {
-    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); keyboardFocus = true; updatePlanInput(); }
-    if (event.key === 'Escape') { renderer.domElement.blur(); }
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if(!event.repeat)activatePlan(); }
+    if (event.key === 'Escape') { templeInteraction.revealed=false;updatePlanInput();renderer.domElement.blur(); }
   };
   if(seaWaves){
     renderer.domElement.addEventListener('pointerenter',onSeaPointer);
@@ -422,6 +446,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
     renderer.domElement.addEventListener('focus', onPlanFocus);
     renderer.domElement.addEventListener('blur', onPlanBlur);
     renderer.domElement.addEventListener('keydown', onPlanKey);
+    renderer.domElement.addEventListener('click', onPlanClick);
   }
   const observer = new ResizeObserver(requestRender);
   observer.observe(container);
@@ -433,6 +458,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
   renderer.domElement.addEventListener('webglcontextrestored', requestRender);
   const onReduced = () => {
     clearTimeout(humanWake);humanWake=0;requestRender();
+    if(!reduced.matches&&coast&&coastAllowed&&container.dataset.landscape==='complete')coastStarted=settledCoastStart(coastStarted,performance.now());
     if(reduced.matches&&seaWaves){clearSeaWaves();requestRender();}
     if(reduced.matches&&treeInteraction){clearTrees();requestRender();}
     if (running && reduced.matches) { clock.value=duration; started=performance.now()-duration; requestRender(); }
@@ -493,7 +519,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
       }
       return output;
     },
-    ...(planView ? { resetPlanView() { pointerOnCanvas = hoverInside = keyboardFocus = false; audiblePlan=0; planView.reset(); requestRender(); } } : {}),
+    ...(planView ? { resetPlanView() { keyboardFocus = false; templeInteraction.reset();templeHover.value=0;hoverAnimating=false;audiblePlan=0; planView.reset(); requestRender(); } } : {}),
     ...(coast ? { landscape:coast.group, resetLandscape() {
       clearTrees();
       clearSeaWaves();
@@ -514,6 +540,7 @@ export function displayTemple(container: HTMLElement, definition: TempleDefiniti
       renderer.domElement.removeEventListener('focus', onPlanFocus);
       renderer.domElement.removeEventListener('blur', onPlanBlur);
       renderer.domElement.removeEventListener('keydown', onPlanKey);
+      renderer.domElement.removeEventListener('click', onPlanClick);
       coast?.dispose();
       seaWaves?.dispose();
       renderer.domElement.removeEventListener('pointerenter',onSeaPointer);
